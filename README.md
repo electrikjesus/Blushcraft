@@ -30,7 +30,7 @@ First to **5** Statement points wins and picks the prize.
 
 Short clip of a practice round: scroll the Choice hand, submit, reveal, reaction check, and score a point.
 
-[Watch `docs/screenshots/round-demo.mp4`](docs/screenshots/round-demo.mp4) (~22s)
+[Watch `docs/screenshots/round-demo.mp4`](docs/screenshots/round-demo.mp4) (~12s)
 
 Built with **Flutter** (Android first, iOS-ready). Local multiplayer uses Google **Nearby Connections** (Bluetooth / Wi-Fi). Online play uses **WebRTC + QR** so round data stays on the two phones.
 
