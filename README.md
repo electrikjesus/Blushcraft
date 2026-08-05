@@ -2,11 +2,12 @@
 
 A two-player, blush-inducing card game for romantic and playful moments.
 
-Built with **Flutter** (Android first, iOS-ready). Local multiplayer syncs over Google **Nearby Connections** (Bluetooth / Wi‑Fi). Online rooms are stubbed for a later release.
+Built with **Flutter** (Android first, iOS-ready). Local multiplayer syncs over Google **Nearby Connections** (Bluetooth / Wi‑Fi). Online play uses **WebRTC + QR** so round data stays on the two phones.
 
 ## Features (v1)
 
-- Host / Join local 2-player games
+- Host / Join local 2-player games (Nearby)
+- Host / Join online via WebRTC + QR invite
 - Practice mode on a single device
 - **Riskay** slider (Innocent ↔ Blush ↔ Riskay) mixes card heat
 - Statement + Choice decks (default / innocent / provocative packs)
@@ -53,7 +54,7 @@ Practice without a second phone:
 lib/
   data/          # cards.json loader
   models/        # cards, game state, players
-  networking/    # Nearby session + message protocol + online stub
+  networking/    # Nearby + WebRTC sessions + GameMessage protocol
   camera/        # reaction selfie controller
   state/         # GameController (host authority) + stats
   share/         # share_plus helpers
@@ -94,18 +95,24 @@ chmod +x tool/build_apk.sh tool/git_version.sh
 
 Fat APK includes **armeabi-v7a**, **arm64-v8a**, and **x86_64**. Do not use `--split-per-abi` if you want one installable for devices and x86_64 emulators.
 
-To cut a named release, tag then build:
+### Signed releases (GitHub Actions)
+
+Pushing a `v*` tag builds signed `app-release.apk` + `app-debug.apk` and publishes a GitHub Release (same secret names as BumpDesk). See [docs/distribution.md](docs/distribution.md) and `keystore.properties.example`.
+
+Local signed build: copy `keystore.properties.example` → `keystore.properties`, generate `keystore/blushcraft-release.jks`, then run `./tool/build_apk.sh`.
+
+To cut a named release:
 
 ```bash
 git tag v0.2.0
-./tool/build_apk.sh   # versionName=0.2.0, versionCode=<commit count>
+git push origin v0.2.0   # triggers Create Release workflow
 ```
 
 ## Online play
 
-**Local (shipping):** Nearby Connections (Bluetooth / Wi‑Fi).
+**Local:** Nearby Connections (Bluetooth / Wi‑Fi).
 
-**Internet (designed, not built yet):** WebRTC + QR signaling so round data never leaves the two devices. See [docs/architecture-webrtc-qr.md](docs/architecture-webrtc-qr.md).
+**Internet:** WebRTC + QR signaling so round data never leaves the two devices. See [docs/architecture-webrtc-qr.md](docs/architecture-webrtc-qr.md).
 
 Later: Supabase or Cloudflare can replace QR for signaling only (optional TURN), without putting card/score sync in the cloud.
 
