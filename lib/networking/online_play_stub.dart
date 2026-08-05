@@ -2,7 +2,7 @@
 ///
 /// v1 internet design: WebRTC + QR signaling (see docs/architecture-webrtc-qr.md).
 /// Round data stays on-device via GameMessage over an RTCDataChannel.
-/// Later: Supabase/Cloudflare replace QR for signaling only — not game state.
+/// Later: Supabase/Cloudflare replace QR for signaling only - not game state.
 abstract class OnlinePlaySession {
   Future<void> createRoom({required String displayName});
   Future<void> joinRoom({required String roomCode, required String displayName});

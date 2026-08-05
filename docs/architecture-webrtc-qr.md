@@ -10,9 +10,9 @@ Later: swap QR signaling for Supabase or Cloudflare **signaling-only** (and opti
 
 ## Principles
 
-1. **Host authority unchanged** — same `GameController` + `GameMessage` JSON as Nearby.
-2. **Transport is pluggable** — `GameTransport`: Nearby | WebRTC+QR | future WebRTC+cloud signal.
-3. **No round payloads in the cloud** in v1 — only optional public STUN; TURN later if needed.
+1. **Host authority unchanged** - same `GameController` + `GameMessage` JSON as Nearby.
+2. **Transport is pluggable** - `GameTransport`: Nearby | WebRTC+QR | future WebRTC+cloud signal.
+3. **No round payloads in the cloud** in v1 - only optional public STUN; TURN later if needed.
 4. **Privacy toggles** remain; online AV prefers WebRTC media tracks over Nearby JPEG/AAC.
 
 ## Pairing flow (v1)
@@ -59,7 +59,7 @@ Versioned envelope, zlib + base64url (chunked multi-QR if needed):
 - **Host online** → show QR + share text + waiting state.
 - **Join online** → scan or paste → show answer QR for host to scan.
 - Once the data channel opens → existing lobby / game UI.
-- Honest copy: best on Wi‑Fi; some mobile networks may need a later TURN update.
+- Honest copy: best on Wi-Fi; some mobile networks may need a later TURN update.
 
 ## Module layout (proposed)
 
@@ -103,7 +103,7 @@ abstract class GameTransport {
 
 | Situation | Likely result |
 |-----------|----------------|
-| Same Wi‑Fi / friendly NATs | Works with public STUN |
+| Same Wi-Fi / friendly NATs | Works with public STUN |
 | Carrier NAT on both phones | May fail without TURN |
 | Large SDP | Mitigate with compression + chunked QR |
 

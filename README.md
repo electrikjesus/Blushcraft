@@ -1,15 +1,45 @@
 # Blushcraft
 
-A two-player, blush-inducing card game for romantic and playful moments.
+**Blushcraft** is a two-player fill-in-the-blank card game made for couples and close friends who want something more personal than trivia night. One player reads a Statement with a blank; the other plays a Choice from their hand. You read the finished line out loud, watch each other's reaction, and score a point when someone breaks first: a blush, a laugh, looking away, or "I can't believe you said that."
 
-Built with **Flutter** (Android first, iOS-ready). Local multiplayer syncs over Google **Nearby Connections** (Bluetooth / Wi‑Fi). Online play uses **WebRTC + QR** so round data stays on the two phones.
+Rounds stay light or turn spicy with the **Riskay** slider. Play face to face over Nearby Connections, practice alone on one phone, or invite a partner online with a QR code. Game sync and reaction video stay between your devices, not on a Blushcraft server.
+
+First to **5** Statement points wins and picks the prize.
+
+<p align="center">
+  <img src="docs/screenshots/home.png" alt="Home: name, Riskay slider, Nearby and Online play" width="220" />
+  &nbsp;
+  <img src="docs/screenshots/lobby.png" alt="Practice lobby ready to start" width="220" />
+  &nbsp;
+  <img src="docs/screenshots/play.png" alt="Round 1: statement and choice hand" width="220" />
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/choice-selected.png" alt="Browsing Choice cards to submit" width="220" />
+  &nbsp;
+  <img src="docs/screenshots/reveal.png" alt="Reveal: filled statements ready to read aloud" width="220" />
+  &nbsp;
+  <img src="docs/screenshots/reaction.png" alt="Reaction check: who broke first" width="220" />
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/round-result.png" alt="Round result with point and share combo" width="220" />
+</p>
+
+### Round demo
+
+Short clip of a practice round: scroll the Choice hand, submit, reveal, reaction check, and score a point.
+
+[Watch `docs/screenshots/round-demo.mp4`](docs/screenshots/round-demo.mp4) (~22s)
+
+Built with **Flutter** (Android first, iOS-ready). Local multiplayer uses Google **Nearby Connections** (Bluetooth / Wi-Fi). Online play uses **WebRTC + QR** so round data stays on the two phones.
 
 ## Features (v1)
 
 - Host / Join local 2-player games (Nearby)
 - Host / Join online via WebRTC + QR invite
 - Practice mode on a single device
-- **Riskay** slider (Innocent ↔ Blush ↔ Riskay) mixes card heat
+- **Riskay** slider (Innocent / Blush / Riskay) mixes card heat
 - Statement + Choice decks (default / innocent / provocative packs)
 - First to **5** points wins and picks a prize
 - Reaction Check with front-camera + mic (privacy toggles for both)
@@ -34,19 +64,19 @@ flutter run
 
 Practice without a second phone:
 
-1. Open the app  
-2. Enter a name  
-3. Tap **Practice on this device**  
-4. Start game and play both seats when prompted  
+1. Open the app
+2. Enter a name
+3. Tap **Practice on this device**
+4. Start game and play both seats when prompted
 
 ## Two-device play
 
-1. Both players install/run the app and enter names  
-2. Player A taps **Host a game** (keep Location + Bluetooth on)  
-3. Player B taps **Join a game**, then **Connect** on the discovered host  
-4. Host taps **Start game**  
-5. Each round: pick a Choice → reveal & read aloud → reaction check (who blushed / broke eye contact first) → refill to 7  
-6. First to 5 Statement points wins and chooses a prize  
+1. Both players install/run the app and enter names
+2. Player A taps **Host a game** (keep Location + Bluetooth on)
+3. Player B taps **Join a game**, then **Connect** on the discovered host
+4. Host taps **Start game**
+5. Each round: pick a Choice, reveal and read aloud, reaction check (who blushed / broke eye contact first), refill to 7
+6. First to 5 Statement points wins and chooses a prize
 
 ## Project layout
 
@@ -64,16 +94,16 @@ assets/cards.json
 
 ## Cards
 
-Source CSV: `Blush Card Game - Print Template - Blush Card Game - Print Template.csv`  
+Source CSV: `Blush Card Game - Print Template - Blush Card Game - Print Template.csv`
 Runtime deck: `assets/cards.json` (default + innocent + provocative packs)
 
 Statements with multiple blanks fill the first blank with the chosen Choice and show `…` for extras.
 
 ### Riskay slider
 
-- **Innocent** (left) — classic blush deck + sweeter / softer cards  
-- **Blush** (center, default) — classic deck only  
-- **Riskay** (right) — classic blush deck + spicier / dirtier cards  
+- **Innocent** (left) - classic blush deck + sweeter / softer cards
+- **Blush** (center, default) - classic deck only
+- **Riskay** (right) - classic blush deck + spicier / dirtier cards
 
 The host can adjust this on the home screen and in the lobby before starting.
 
@@ -110,7 +140,7 @@ git push origin v0.2.0   # triggers Create Release workflow
 
 ## Online play
 
-**Local:** Nearby Connections (Bluetooth / Wi‑Fi).
+**Local:** Nearby Connections (Bluetooth / Wi-Fi).
 
 **Internet:** WebRTC + QR signaling so round data never leaves the two devices. See [docs/architecture-webrtc-qr.md](docs/architecture-webrtc-qr.md).
 
@@ -118,4 +148,4 @@ Later: Supabase or Cloudflare can replace QR for signaling only (optional TURN),
 
 ## License
 
-Private / unreleased — Blushcraft.
+[GNU General Public License v3.0](LICENSE) (GPLv3).

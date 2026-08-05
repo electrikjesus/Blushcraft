@@ -3,7 +3,7 @@ Blushcraft is a two-player, blush-inducing card game for romantic and playful mo
 ### Highlights
 
 - Host / Join nearby, Host / Join online (QR), and Practice mode
-- Riskay slider mixes innocent ↔ spicy card packs
+- Riskay slider mixes innocent / spicy card packs
 - First to 5 points wins and picks a prize
 - Live reaction PiP (camera + mic) with privacy toggles
 

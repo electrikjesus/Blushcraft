@@ -82,7 +82,7 @@ fi
   echo "| **Release filter** | \`v*\` tags |"
   echo "| **APK filter** | \`app-release.apk\` |"
   echo ""
-  echo "Obtainium tracks GitHub Releases — no separate store submission. See [docs/distribution.md](https://github.com/${REPO}/blob/main/docs/distribution.md)."
+  echo "Obtainium tracks GitHub Releases - no separate store submission. See [docs/distribution.md](https://github.com/${REPO}/blob/main/docs/distribution.md)."
   echo ""
   echo "### Build info"
   echo ""
