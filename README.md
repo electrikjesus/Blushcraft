@@ -1,4 +1,4 @@
-# Blushcraft
+# <img src="web/icons/Icon-192.png" alt="" width="40" height="40" align="absmiddle"> Blushcraft
 
 **Blushcraft** is a two-player fill-in-the-blank card game made for couples and close friends who want something more personal than trivia night. One player reads a Statement with a blank; the other plays a Choice from their hand. You read the finished line out loud, watch each other's reaction, and score a point when someone breaks first: a blush, a laugh, looking away, or "I can't believe you said that."
 
