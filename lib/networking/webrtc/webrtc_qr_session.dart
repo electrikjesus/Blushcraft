@@ -100,6 +100,8 @@ class WebRtcQrSession extends GameSession {
       _localStream = stream;
       localRenderer.srcObject = stream;
       for (final track in stream.getTracks()) {
+        // Opt-in: stay muted until the in-app consent toggle enables them.
+        track.enabled = false;
         await pc.addTrack(track, stream);
       }
       mediaReady = true;

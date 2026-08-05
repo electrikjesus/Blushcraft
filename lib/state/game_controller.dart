@@ -5,6 +5,7 @@ import 'package:uuid/uuid.dart';
 
 import '../data/card_repository.dart';
 import '../models/card.dart';
+import '../models/game_mode.dart';
 import '../models/game_state.dart';
 import '../models/player.dart';
 import '../models/round_result.dart';
@@ -29,9 +30,11 @@ class GameController extends ChangeNotifier {
     this.isHost = true,
     this.dryRun = false,
     double riskayLevel = 0.5,
+    GameMode gameMode = GameMode.romantic,
   })  : _cards = cards,
         _stats = stats,
         _riskayLevel = riskayLevel.clamp(0.0, 1.0),
+        _gameMode = gameMode == GameMode.bff ? GameMode.romantic : gameMode,
         localPlayerId = const Uuid().v4();
 
   final CardRepository _cards;
@@ -41,6 +44,7 @@ class GameController extends ChangeNotifier {
   final bool dryRun;
   final String localPlayerId;
   double _riskayLevel;
+  GameMode _gameMode;
 
   SendMessage? sendMessage;
   OnPeerFrame? onPeerFrame;
@@ -58,6 +62,7 @@ class GameController extends ChangeNotifier {
   GameState? get state => _state;
   bool get hasGame => _state != null;
   double get riskayLevel => _riskayLevel;
+  GameMode get gameMode => _gameMode;
 
   /// Guest endpoint id for dry-run second seat.
   static const dryRunGuestId = 'dryrun-guest';
@@ -79,6 +84,7 @@ class GameController extends ChangeNotifier {
       ),
       localPlayerId: localPlayerId,
       riskayLevel: _riskayLevel,
+      gameMode: _gameMode,
       message: dryRun
           ? 'Dry-run: play both seats on this device.'
           : (isHost
@@ -124,11 +130,25 @@ class GameController extends ChangeNotifier {
     }
   }
 
+  Future<void> setGameMode(GameMode mode) async {
+    if (!mode.isSelectable) return;
+    _gameMode = mode;
+    if (_state != null) {
+      _state = _state!.copyWith(gameMode: _gameMode);
+    }
+    notifyListeners();
+    if (isHost) {
+      await _broadcast();
+    } else {
+      await sendMessage?.call(SetGameModeMessage(gameMode: _gameMode.wireName));
+    }
+  }
+
   Future<void> startGame() async {
     if (!isHost || _state == null) return;
     if (!dryRun && _state!.guest.id == 'pending-guest') return;
 
-    final pool = _cards.poolForRiskay(_riskayLevel, random: _rng);
+    final pool = _cards.poolFor(_gameMode, _riskayLevel, random: _rng);
     _activeStatementIds = pool.statements.map((s) => s.id).toList();
     _activeChoiceIds = pool.choices.map((c) => c.id).toList();
     _statementDeck = List<int>.from(_activeStatementIds)..shuffle(_rng);
@@ -144,6 +164,7 @@ class GameController extends ChangeNotifier {
       guestHand: guestHand,
       roundNumber: 0,
       riskayLevel: _riskayLevel,
+      gameMode: _gameMode,
       clearPrize: true,
       clearLastCombo: true,
     );
@@ -156,7 +177,7 @@ class GameController extends ChangeNotifier {
       _statementDeck = List<int>.from(_activeStatementIds)..shuffle(_rng);
     }
     final sid = _statementDeck.removeLast();
-    final statement = _cards.statementById(sid)!;
+    final statement = _cards.statementById(sid, mode: _gameMode)!;
 
     _state = _state!.copyWith(
       phase: GamePhase.selecting,
@@ -213,7 +234,7 @@ class GameController extends ChangeNotifier {
 
   Future<void> _applySubmit(String playerId, int choiceId) async {
     if (_state == null || !isHost) return;
-    final choice = _cards.choiceById(choiceId);
+    final choice = _cards.choiceById(choiceId, mode: _gameMode);
     if (choice == null) return;
 
     final isHostPlayer = playerId == _state!.host.id;
@@ -431,6 +452,7 @@ class GameController extends ChangeNotifier {
         if (!isHost) {
           final remote = GameState.fromJson(m.state).forViewer(localPlayerId);
           _riskayLevel = remote.riskayLevel;
+          _gameMode = remote.gameMode;
           _state = remote;
           notifyListeners();
         }
@@ -451,6 +473,10 @@ class GameController extends ChangeNotifier {
       case SetRiskayMessage m:
         if (isHost && _state?.phase == GamePhase.lobby) {
           await setRiskayLevel(m.riskayLevel);
+        }
+      case SetGameModeMessage m:
+        if (isHost && _state?.phase == GamePhase.lobby) {
+          await setGameMode(GameMode.fromWire(m.gameMode));
         }
       case PeerFrameMessage m:
         onPeerFrame?.call(m.playerId, m.base64Jpeg);
@@ -525,6 +551,7 @@ class GameController extends ChangeNotifier {
     return s.localHand;
   }
 
-  ChoiceCard? choice(int id) => _cards.choiceById(id);
-  StatementCard? statement(int id) => _cards.statementById(id);
+  ChoiceCard? choice(int id) => _cards.choiceById(id, mode: _gameMode);
+  StatementCard? statement(int id) =>
+      _cards.statementById(id, mode: _gameMode);
 }

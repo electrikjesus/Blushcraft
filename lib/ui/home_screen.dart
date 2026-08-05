@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../../models/game_mode.dart';
 import 'theme.dart';
+import 'widgets/game_mode_picker.dart';
 import 'widgets/riskay_slider.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -16,6 +18,8 @@ class HomeScreen extends StatefulWidget {
     required this.initialName,
     required this.riskayLevel,
     required this.onRiskayChanged,
+    required this.gameMode,
+    required this.onGameModeChanged,
   });
 
   final ValueChanged<String> onHost;
@@ -28,6 +32,8 @@ class HomeScreen extends StatefulWidget {
   final String initialName;
   final double riskayLevel;
   final ValueChanged<double> onRiskayChanged;
+  final GameMode gameMode;
+  final ValueChanged<GameMode> onGameModeChanged;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -132,6 +138,11 @@ class _HomeScreenState extends State<HomeScreen>
                             hintText: 'What should we call you?',
                           ),
                           textInputAction: TextInputAction.done,
+                        ),
+                        const SizedBox(height: 20),
+                        GameModePicker(
+                          value: widget.gameMode,
+                          onChanged: widget.onGameModeChanged,
                         ),
                         const SizedBox(height: 20),
                         RiskaySlider(

@@ -4,6 +4,7 @@ import '../../networking/game_transport.dart';
 import '../../networking/nearby_game_session.dart';
 import '../../state/game_controller.dart';
 import 'theme.dart';
+import 'widgets/game_mode_picker.dart';
 import 'widgets/riskay_slider.dart';
 
 class LobbyScreen extends StatelessWidget {
@@ -48,6 +49,7 @@ class LobbyScreen extends StatelessWidget {
             final status = session?.status ?? s?.message ?? '';
             final discovered = nearby?.discovered.entries.toList() ?? [];
             final canEditRiskay = controller.isHost || controller.dryRun;
+            final canEditMode = canEditRiskay;
             final partnerReady = controller.dryRun ||
                 (s != null && s.guest.id != 'pending-guest') ||
                 (session != null && session!.isConnected);
@@ -74,6 +76,22 @@ class LobbyScreen extends StatelessWidget {
                   highlighted: s != null && s.guest.id != 'pending-guest',
                 ),
                 const SizedBox(height: 28),
+                GameModePicker(
+                  value: s?.gameMode ?? controller.gameMode,
+                  enabled: canEditMode,
+                  onChanged: canEditMode
+                      ? (m) => controller.setGameMode(m)
+                      : (_) {},
+                ),
+                if (!canEditMode)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      'Host sets the game mode for this match.',
+                      style: BlushTheme.body(12, color: BlushTheme.inkMuted),
+                    ),
+                  ),
+                const SizedBox(height: 20),
                 RiskaySlider(
                   value: s?.riskayLevel ?? controller.riskayLevel,
                   enabled: canEditRiskay,

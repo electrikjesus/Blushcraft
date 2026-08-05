@@ -39,8 +39,9 @@ class HowToPlayScreen extends StatelessWidget {
               '4. Reaction check',
               'Whoever blushes, laughs/smiles first, or breaks eye contact loses the round: '
               'the other player gets the point. If you disagree, read again while holding eye contact. '
-              'Camera and mic stay live in a corner PiP for the whole round so reactions stay genuine; '
-              'tap the icons to pause either for privacy.',
+              'Reaction camera and mic stay off until you allow them. Tap the icons, agree to the '
+              'short consent prompt, then you can turn either off anytime. Your partner only sees '
+              'or hears you after you opt in.',
             ),
             _section(
               'Connection drops',
@@ -51,6 +52,12 @@ class HowToPlayScreen extends StatelessWidget {
               '5. Scoring',
               'Winner of the round keeps the Statement as 1 point. First to 5 points wins '
               'and chooses a prize (foot massage, breakfast in bed, next date night…).',
+            ),
+            _section(
+              'Game modes',
+              'Romantic Partner is the classic couple deck. Fresh Start is for two people who '
+              'just met, with prompts meant to learn and startle. BFF mode is coming later. '
+              'The host picks the mode before the match starts.',
             ),
             _section(
               'Riskay slider',

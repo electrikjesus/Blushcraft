@@ -186,7 +186,7 @@ class ReactionAvPanel extends StatelessWidget {
     } else if (peerJpeg != null && av.peerCameraEnabled) {
       child = Image.memory(peerJpeg!, fit: BoxFit.cover);
     } else if (!av.peerCameraEnabled) {
-      child = _placeholder('Partner camera off');
+      child = _placeholder('Waiting for partner share');
     } else {
       child = _placeholder(
         av.ready || peerVideo != null ? 'Waiting for partner…' : 'Connecting…',

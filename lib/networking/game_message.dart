@@ -38,6 +38,8 @@ sealed class GameMessage {
         return SetPrizeMessage.fromJson(map);
       case SetRiskayMessage.typeName:
         return SetRiskayMessage.fromJson(map);
+      case SetGameModeMessage.typeName:
+        return SetGameModeMessage.fromJson(map);
       default:
         throw FormatException('Unknown GameMessage type: $type');
     }
@@ -291,8 +293,8 @@ class AvPrivacyMessage extends GameMessage {
   factory AvPrivacyMessage.fromJson(Map<String, dynamic> json) {
     return AvPrivacyMessage(
       playerId: json['playerId'] as String,
-      cameraEnabled: json['cameraEnabled'] as bool? ?? true,
-      micEnabled: json['micEnabled'] as bool? ?? true,
+      cameraEnabled: json['cameraEnabled'] as bool? ?? false,
+      micEnabled: json['micEnabled'] as bool? ?? false,
     );
   }
 }
@@ -314,5 +316,23 @@ class SetRiskayMessage extends GameMessage {
     return SetRiskayMessage(
       riskayLevel: (json['riskayLevel'] as num).toDouble(),
     );
+  }
+}
+
+class SetGameModeMessage extends GameMessage {
+  const SetGameModeMessage({required this.gameMode});
+
+  static const typeName = 'game_mode';
+
+  final String gameMode;
+
+  @override
+  String get type => typeName;
+
+  @override
+  Map<String, dynamic> toJson() => {'gameMode': gameMode};
+
+  factory SetGameModeMessage.fromJson(Map<String, dynamic> json) {
+    return SetGameModeMessage(gameMode: json['gameMode'] as String);
   }
 }

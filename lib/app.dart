@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'data/card_repository.dart';
+import 'models/game_mode.dart';
 import 'models/game_state.dart';
 import 'networking/game_message.dart';
 import 'networking/game_transport.dart';
@@ -49,6 +50,7 @@ class _AppRootState extends State<AppRoot> {
   AppScreen _screen = AppScreen.home;
   String _displayName = 'Player';
   double _riskayLevel = 0.5;
+  GameMode _gameMode = GameMode.romantic;
   String? _loadError;
 
   @override
@@ -64,6 +66,7 @@ class _AppRootState extends State<AppRoot> {
       final stats = StatsStore(prefs);
       final savedName = prefs.getString('blushcraft_name');
       final savedRiskay = prefs.getDouble('blushcraft_riskay');
+      final savedMode = prefs.getString('blushcraft_game_mode');
       setState(() {
         _cards = cards;
         _stats = stats;
@@ -72,6 +75,10 @@ class _AppRootState extends State<AppRoot> {
         }
         if (savedRiskay != null) {
           _riskayLevel = savedRiskay.clamp(0.0, 1.0);
+        }
+        if (savedMode != null) {
+          final mode = GameMode.fromWire(savedMode);
+          _gameMode = mode.isSelectable ? mode : GameMode.romantic;
         }
       });
     } catch (e) {
@@ -90,6 +97,30 @@ class _AppRootState extends State<AppRoot> {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setDouble('blushcraft_riskay', _riskayLevel);
     setState(() {});
+  }
+
+  Future<void> _persistGameMode(GameMode mode) async {
+    if (!mode.isSelectable) return;
+    _gameMode = mode;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('blushcraft_game_mode', mode.wireName);
+    setState(() {});
+  }
+
+  GameController _newController({
+    required String name,
+    required bool isHost,
+    bool dryRun = false,
+  }) {
+    return GameController(
+      cards: _cards!,
+      stats: (_stats!..resetGameResultGate()),
+      displayName: name,
+      isHost: isHost,
+      dryRun: dryRun,
+      riskayLevel: _riskayLevel,
+      gameMode: _gameMode,
+    );
   }
 
   Future<void> _handleGameMessage(
@@ -138,15 +169,7 @@ class _AppRootState extends State<AppRoot> {
 
   Future<void> _startHost(String name) async {
     await _persistName(name);
-    final stats = _stats!..resetGameResultGate();
-
-    final controller = GameController(
-      cards: _cards!,
-      stats: stats,
-      displayName: name,
-      isHost: true,
-      riskayLevel: _riskayLevel,
-    );
+    final controller = _newController(name: name, isHost: true);
 
     late final NearbyGameSession session;
     session = NearbyGameSession(
@@ -184,15 +207,7 @@ class _AppRootState extends State<AppRoot> {
 
   Future<void> _startJoin(String name) async {
     await _persistName(name);
-    final stats = _stats!..resetGameResultGate();
-
-    final controller = GameController(
-      cards: _cards!,
-      stats: stats,
-      displayName: name,
-      isHost: false,
-      riskayLevel: _riskayLevel,
-    );
+    final controller = _newController(name: name, isHost: false);
 
     late final NearbyGameSession session;
     session = NearbyGameSession(
@@ -234,15 +249,7 @@ class _AppRootState extends State<AppRoot> {
 
   Future<void> _startHostOnline(String name) async {
     await _persistName(name);
-    final stats = _stats!..resetGameResultGate();
-
-    final controller = GameController(
-      cards: _cards!,
-      stats: stats,
-      displayName: name,
-      isHost: true,
-      riskayLevel: _riskayLevel,
-    );
+    final controller = _newController(name: name, isHost: true);
 
     final session = WebRtcQrSession(
       userName: name,
@@ -281,15 +288,7 @@ class _AppRootState extends State<AppRoot> {
 
   Future<void> _startJoinOnline(String name) async {
     await _persistName(name);
-    final stats = _stats!..resetGameResultGate();
-
-    final controller = GameController(
-      cards: _cards!,
-      stats: stats,
-      displayName: name,
-      isHost: false,
-      riskayLevel: _riskayLevel,
-    );
+    final controller = _newController(name: name, isHost: false);
 
     late final WebRtcQrSession session;
     session = WebRtcQrSession(
@@ -333,14 +332,7 @@ class _AppRootState extends State<AppRoot> {
 
   Future<void> _startDryRun(String name) async {
     await _persistName(name);
-    final controller = GameController(
-      cards: _cards!,
-      stats: _stats!..resetGameResultGate(),
-      displayName: name,
-      isHost: true,
-      dryRun: true,
-      riskayLevel: _riskayLevel,
-    );
+    final controller = _newController(name: name, isHost: true, dryRun: true);
     await controller.initLobby(guestName: 'Partner');
     setState(() {
       _controller = controller;
@@ -407,6 +399,8 @@ class _AppRootState extends State<AppRoot> {
           initialName: _displayName,
           riskayLevel: _riskayLevel,
           onRiskayChanged: _persistRiskay,
+          gameMode: _gameMode,
+          onGameModeChanged: _persistGameMode,
           onHost: _startHost,
           onJoin: _startJoin,
           onHostOnline: _startHostOnline,

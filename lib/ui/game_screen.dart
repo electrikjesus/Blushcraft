@@ -47,6 +47,7 @@ class _GameScreenState extends State<GameScreen> {
   DateTime _lastAudioSent = DateTime.fromMillisecondsSinceEpoch(0);
   ReactionAvLayoutPref _avLayoutPref = ReactionAvLayoutPref.auto;
   static const _avLayoutPrefKey = 'blushcraft_av_layout';
+  bool _avConsentGiven = false;
 
   NearbyGameSession? get _nearby =>
       widget.session is NearbyGameSession
@@ -76,6 +77,7 @@ class _GameScreenState extends State<GameScreen> {
       setState(() => _peerFrameBase64 = b64);
     };
     widget.controller.onPeerAudio = (id, b64) async {
+      if (!_av.peerMicEnabled) return;
       try {
         await _av.playPeerAudio(base64Decode(b64));
       } catch (_) {}
@@ -145,11 +147,12 @@ class _GameScreenState extends State<GameScreen> {
   void _onGame() {
     final phase = widget.controller.state?.phase;
     if (_shouldStreamAv(phase)) {
+      // Publish off-by-default privacy; only touch hardware after consent.
+      unawaited(_publishPrivacy());
       if (_useWebRtcMedia) {
         unawaited(_syncWebRtcTracks());
-        unawaited(_publishPrivacy());
-      } else {
-        _ensureAv();
+      } else if (_av.cameraEnabled || _av.micEnabled) {
+        unawaited(_ensureAv());
       }
     } else {
       _stopFrames();
@@ -184,11 +187,55 @@ class _GameScreenState extends State<GameScreen> {
   Future<void> _ensureAv() async {
     final ok = await _av.init();
     if (!ok || !mounted) return;
-    _startFrames();
+    if (_av.cameraEnabled) {
+      _startFrames();
+    }
     if (_av.micEnabled) {
       await _av.startMic();
     }
     await _publishPrivacy();
+  }
+
+  Future<bool> _confirmAvConsent() async {
+    if (_avConsentGiven) return true;
+    final agreed = await showModalBottomSheet<bool>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(24, 8, 24, 28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text('Share reaction camera?', style: BlushTheme.display(22)),
+              const SizedBox(height: 12),
+              Text(
+                'Reaction video and mic are optional. If you allow them, your '
+                'partner can see and hear you during the round. You can turn '
+                'either off anytime.',
+                style: BlushTheme.body(15),
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('Allow'),
+              ),
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Not now'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+    if (agreed == true) {
+      _avConsentGiven = true;
+      return true;
+    }
+    return false;
   }
 
   Future<void> _publishPrivacy() async {
@@ -227,19 +274,36 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   Future<void> _toggleCamera() async {
-    await _av.setCameraEnabled(!_av.cameraEnabled);
+    if (_av.cameraEnabled) {
+      await _av.setCameraEnabled(false);
+      _stopFrames();
+    } else {
+      final ok = await _confirmAvConsent();
+      if (!ok || !mounted) return;
+      if (!_useWebRtcMedia) {
+        final ready = await _av.init();
+        if (!ready || !mounted) return;
+      }
+      await _av.setCameraEnabled(true);
+      if (!_useWebRtcMedia) {
+        _startFrames();
+      }
+    }
     await _webrtc?.setTrackEnabled(
       video: _av.cameraEnabled,
       audio: _av.micEnabled,
     );
     await _publishPrivacy();
-    if (_av.cameraEnabled && !_useWebRtcMedia) {
-      _startFrames();
-    }
   }
 
   Future<void> _toggleMic() async {
-    await _av.setMicEnabled(!_av.micEnabled);
+    if (_av.micEnabled) {
+      await _av.setMicEnabled(false);
+    } else {
+      final ok = await _confirmAvConsent();
+      if (!ok || !mounted) return;
+      await _av.setMicEnabled(true);
+    }
     await _webrtc?.setTrackEnabled(
       video: _av.cameraEnabled,
       audio: _av.micEnabled,

@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:blushcraft/data/card_repository.dart';
 import 'package:blushcraft/models/card.dart';
+import 'package:blushcraft/models/game_mode.dart';
 
 void main() {
   test('StatementCard fills first blank only', () {
@@ -30,12 +31,12 @@ void main() {
 
   test('Riskay pool mixes packs by slider', () {
     final repo = CardRepository.forTesting(
-      statements: [
+      romanticStatements: [
         const StatementCard(id: 1, text: 'd', heat: CardHeat.defaults),
         const StatementCard(id: 2, text: 'i', heat: CardHeat.innocent),
         const StatementCard(id: 3, text: 'p', heat: CardHeat.provocative),
       ],
-      choices: [
+      romanticChoices: [
         const ChoiceCard(id: 1, text: 'd', heat: CardHeat.defaults),
         const ChoiceCard(id: 2, text: 'i', heat: CardHeat.innocent),
         const ChoiceCard(id: 3, text: 'p', heat: CardHeat.provocative),
@@ -53,6 +54,52 @@ void main() {
     final hot = repo.poolForRiskay(1.0, random: Random(1));
     expect(hot.statements.any((s) => s.heat == CardHeat.provocative), isTrue);
     expect(hot.statements.any((s) => s.heat == CardHeat.innocent), isFalse);
+  });
+
+  test('Mode pools do not cross-contaminate', () {
+    final repo = CardRepository.forTesting(
+      romanticStatements: [
+        const StatementCard(
+          id: 1,
+          text: 'romantic default',
+          heat: CardHeat.defaults,
+        ),
+      ],
+      romanticChoices: [
+        const ChoiceCard(id: 1, text: 'romantic choice', heat: CardHeat.defaults),
+      ],
+      freshStatements: [
+        const StatementCard(
+          id: 1,
+          text: 'fresh default',
+          heat: CardHeat.defaults,
+        ),
+        const StatementCard(
+          id: 2,
+          text: 'fresh innocent',
+          heat: CardHeat.innocent,
+        ),
+      ],
+      freshChoices: [
+        const ChoiceCard(id: 1, text: 'fresh choice', heat: CardHeat.defaults),
+      ],
+    );
+
+    final romantic = repo.poolFor(GameMode.romantic, 0.5, random: Random(1));
+    expect(romantic.statements.map((s) => s.text), ['romantic default']);
+    expect(romantic.choices.map((c) => c.text), ['romantic choice']);
+
+    final fresh = repo.poolFor(GameMode.freshStart, 0.0, random: Random(1));
+    expect(fresh.statements.any((s) => s.text.contains('romantic')), isFalse);
+    expect(fresh.statements.any((s) => s.text.contains('fresh')), isTrue);
+    expect(
+      repo.statementById(1, mode: GameMode.freshStart)?.text,
+      'fresh default',
+    );
+    expect(
+      repo.statementById(1, mode: GameMode.romantic)?.text,
+      'romantic default',
+    );
   });
 
   test('Riskay labels', () {

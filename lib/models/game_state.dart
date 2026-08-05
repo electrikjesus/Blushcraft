@@ -1,3 +1,4 @@
+import 'game_mode.dart';
 import 'player.dart';
 import 'round_result.dart';
 
@@ -34,6 +35,7 @@ class GameState {
     this.hostReactionVote,
     this.guestReactionVote,
     this.riskayLevel = 0.5,
+    this.gameMode = GameMode.romantic,
   });
 
   final GamePhase phase;
@@ -60,6 +62,9 @@ class GameState {
 
   /// 0.0 Innocent · 0.5 Blush (default) · 1.0 Riskay.
   final double riskayLevel;
+
+  /// Deck mode (Romantic / Fresh Start / …). Locked at deal time.
+  final GameMode gameMode;
 
   bool get isHost => localPlayerId == host.id;
   bool get isGuest => localPlayerId == guest.id;
@@ -102,6 +107,7 @@ class GameState {
     String? hostReactionVote,
     String? guestReactionVote,
     double? riskayLevel,
+    GameMode? gameMode,
     bool clearStatement = false,
     bool clearSubmissions = false,
     bool clearVotes = false,
@@ -140,6 +146,7 @@ class GameState {
       guestReactionVote:
           clearVotes ? null : (guestReactionVote ?? this.guestReactionVote),
       riskayLevel: riskayLevel ?? this.riskayLevel,
+      gameMode: gameMode ?? this.gameMode,
     );
   }
 
@@ -165,6 +172,7 @@ class GameState {
         'hostReactionVote': hostReactionVote,
         'guestReactionVote': guestReactionVote,
         'riskayLevel': riskayLevel,
+        'gameMode': gameMode.wireName,
       };
 
   factory GameState.fromJson(Map<String, dynamic> json) {
@@ -195,6 +203,7 @@ class GameState {
       hostReactionVote: json['hostReactionVote'] as String?,
       guestReactionVote: json['guestReactionVote'] as String?,
       riskayLevel: (json['riskayLevel'] as num?)?.toDouble() ?? 0.5,
+      gameMode: GameMode.fromWire(json['gameMode'] as String?),
     );
   }
 

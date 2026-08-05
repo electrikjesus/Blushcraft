@@ -20,10 +20,10 @@ class ReactionAvController extends ChangeNotifier {
   bool cameraPermissionDenied = false;
   bool micPermissionDenied = false;
 
-  bool cameraEnabled = true;
-  bool micEnabled = true;
-  bool peerCameraEnabled = true;
-  bool peerMicEnabled = true;
+  bool cameraEnabled = false;
+  bool micEnabled = false;
+  bool peerCameraEnabled = false;
+  bool peerMicEnabled = false;
 
   AudioChunkHandler? onLocalAudioChunk;
 
@@ -86,8 +86,12 @@ class ReactionAvController extends ChangeNotifier {
   Future<void> setMicEnabled(bool enabled) async {
     if (micEnabled == enabled) return;
     micEnabled = enabled;
-    if (enabled && !micPermissionDenied) {
-      await startMic();
+    if (enabled) {
+      final mic = await Permission.microphone.request();
+      micPermissionDenied = !mic.isGranted;
+      if (!micPermissionDenied) {
+        await startMic();
+      }
     } else {
       await stopMic();
     }

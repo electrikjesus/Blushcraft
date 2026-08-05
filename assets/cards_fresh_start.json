@@ -1,0 +1,946 @@
+{
+  "statements": [
+    {
+      "id": 1,
+      "text": "The first thing I noticed about you was _______________.",
+      "heat": "default"
+    },
+    {
+      "id": 2,
+      "text": "You seem like the kind of person who _______________.",
+      "heat": "default"
+    },
+    {
+      "id": 3,
+      "text": "I'm weirdly curious whether you _______________.",
+      "heat": "default"
+    },
+    {
+      "id": 4,
+      "text": "If we only had ten minutes left, I'd ask you about _______________.",
+      "heat": "default"
+    },
+    {
+      "id": 5,
+      "text": "Your energy tonight feels like _______________.",
+      "heat": "default"
+    },
+    {
+      "id": 6,
+      "text": "I bet your friends would say you're _______________.",
+      "heat": "default"
+    },
+    {
+      "id": 7,
+      "text": "Something about you makes me want to _______________.",
+      "heat": "default"
+    },
+    {
+      "id": 8,
+      "text": "I'm trying not to stare, but _______________.",
+      "heat": "default"
+    },
+    {
+      "id": 9,
+      "text": "You'd probably surprise people by admitting _______________.",
+      "heat": "default"
+    },
+    {
+      "id": 10,
+      "text": "The most honest thing I can say right now is _______________.",
+      "heat": "default"
+    },
+    {
+      "id": 11,
+      "text": "I have a hunch that you _______________.",
+      "heat": "default"
+    },
+    {
+      "id": 12,
+      "text": "If this were a movie, this scene would be about _______________.",
+      "heat": "default"
+    },
+    {
+      "id": 13,
+      "text": "You strike me as someone who secretly _______________.",
+      "heat": "default"
+    },
+    {
+      "id": 14,
+      "text": "I'm low-key hoping you _______________.",
+      "heat": "default"
+    },
+    {
+      "id": 15,
+      "text": "The question I shouldn't ask yet is about _______________.",
+      "heat": "default"
+    },
+    {
+      "id": 16,
+      "text": "You look like you have a story involving _______________.",
+      "heat": "default"
+    },
+    {
+      "id": 17,
+      "text": "I keep wondering what you'd do if _______________.",
+      "heat": "default"
+    },
+    {
+      "id": 18,
+      "text": "My first impression update: you're _______________.",
+      "heat": "default"
+    },
+    {
+      "id": 19,
+      "text": "You're hardest to read when it comes to _______________.",
+      "heat": "default"
+    },
+    {
+      "id": 20,
+      "text": "If I had to guess your guilty pleasure, it's _______________.",
+      "heat": "default"
+    },
+    {
+      "id": 21,
+      "text": "There's a version of you I haven't met yet that _______________.",
+      "heat": "default"
+    },
+    {
+      "id": 22,
+      "text": "I feel like you'd either love or hate _______________.",
+      "heat": "default"
+    },
+    {
+      "id": 23,
+      "text": "The most interesting thing in this room is _______________.",
+      "heat": "default"
+    },
+    {
+      "id": 24,
+      "text": "You make small talk feel like _______________.",
+      "heat": "default"
+    },
+    {
+      "id": 25,
+      "text": "I'd trust you faster if I knew _______________.",
+      "heat": "default"
+    },
+    {
+      "id": 26,
+      "text": "Your vibe is giving _______________.",
+      "heat": "default"
+    },
+    {
+      "id": 27,
+      "text": "I'm lowkey intimidated by how _______________.",
+      "heat": "default"
+    },
+    {
+      "id": 28,
+      "text": "If we swapped phones for a minute, I'd find _______________.",
+      "heat": "default"
+    },
+    {
+      "id": 29,
+      "text": "You seem dangerously good at _______________.",
+      "heat": "default"
+    },
+    {
+      "id": 30,
+      "text": "The thing I'm pretending not to notice is _______________.",
+      "heat": "default"
+    },
+    {
+      "id": 31,
+      "text": "Your comfort food is probably _______________.",
+      "heat": "innocent"
+    },
+    {
+      "id": 32,
+      "text": "On a perfect lazy morning, you _______________.",
+      "heat": "innocent"
+    },
+    {
+      "id": 33,
+      "text": "Your go-to karaoke song would be _______________.",
+      "heat": "innocent"
+    },
+    {
+      "id": 34,
+      "text": "You collect _______________.",
+      "heat": "innocent"
+    },
+    {
+      "id": 35,
+      "text": "Your most used emoji is basically _______________.",
+      "heat": "innocent"
+    },
+    {
+      "id": 36,
+      "text": "In group chats, you're the one who _______________.",
+      "heat": "innocent"
+    },
+    {
+      "id": 37,
+      "text": "Your dream travel day includes _______________.",
+      "heat": "innocent"
+    },
+    {
+      "id": 38,
+      "text": "You get weirdly competitive about _______________.",
+      "heat": "innocent"
+    },
+    {
+      "id": 39,
+      "text": "Your childhood nickname was probably _______________.",
+      "heat": "innocent"
+    },
+    {
+      "id": 40,
+      "text": "You can't start the day without _______________.",
+      "heat": "innocent"
+    },
+    {
+      "id": 41,
+      "text": "Your comfort show is _______________.",
+      "heat": "innocent"
+    },
+    {
+      "id": 42,
+      "text": "You organize your life around _______________.",
+      "heat": "innocent"
+    },
+    {
+      "id": 43,
+      "text": "Your pet peeve in public is _______________.",
+      "heat": "innocent"
+    },
+    {
+      "id": 44,
+      "text": "You're weirdly talented at _______________.",
+      "heat": "innocent"
+    },
+    {
+      "id": 45,
+      "text": "Your ideal weekend has _______________.",
+      "heat": "innocent"
+    },
+    {
+      "id": 46,
+      "text": "You always lose track of time when _______________.",
+      "heat": "innocent"
+    },
+    {
+      "id": 47,
+      "text": "Your browser history would reveal _______________.",
+      "heat": "innocent"
+    },
+    {
+      "id": 48,
+      "text": "You were that kid who _______________.",
+      "heat": "innocent"
+    },
+    {
+      "id": 49,
+      "text": "Your signature order is _______________.",
+      "heat": "innocent"
+    },
+    {
+      "id": 50,
+      "text": "You get sentimental about _______________.",
+      "heat": "innocent"
+    },
+    {
+      "id": 51,
+      "text": "Your spirit animal is currently _______________.",
+      "heat": "innocent"
+    },
+    {
+      "id": 52,
+      "text": "You'd win a trivia night on _______________.",
+      "heat": "innocent"
+    },
+    {
+      "id": 53,
+      "text": "The hottest take you'd defend in public is _______________.",
+      "heat": "provocative"
+    },
+    {
+      "id": 54,
+      "text": "You've definitely ghosted someone over _______________.",
+      "heat": "provocative"
+    },
+    {
+      "id": 55,
+      "text": "Your most chaotic dating story involves _______________.",
+      "heat": "provocative"
+    },
+    {
+      "id": 56,
+      "text": "You get flustered when someone _______________.",
+      "heat": "provocative"
+    },
+    {
+      "id": 57,
+      "text": "Your green flag that looks like a red flag is _______________.",
+      "heat": "provocative"
+    },
+    {
+      "id": 58,
+      "text": "You'd break your own rule for _______________.",
+      "heat": "provocative"
+    },
+    {
+      "id": 59,
+      "text": "The rumor about you that might be true is _______________.",
+      "heat": "provocative"
+    },
+    {
+      "id": 60,
+      "text": "You're most dangerous when you're _______________.",
+      "heat": "provocative"
+    },
+    {
+      "id": 61,
+      "text": "Your soft spot that you hide is _______________.",
+      "heat": "provocative"
+    },
+    {
+      "id": 62,
+      "text": "You've fantasized about walking into a room and _______________.",
+      "heat": "provocative"
+    },
+    {
+      "id": 63,
+      "text": "Your boldest DM would say _______________.",
+      "heat": "provocative"
+    },
+    {
+      "id": 64,
+      "text": "You get jealous about _______________.",
+      "heat": "provocative"
+    },
+    {
+      "id": 65,
+      "text": "Your 'I shouldn't say this out loud' thought is _______________.",
+      "heat": "provocative"
+    },
+    {
+      "id": 66,
+      "text": "You're most attractive when you _______________.",
+      "heat": "provocative"
+    },
+    {
+      "id": 67,
+      "text": "The boundary you pretend you don't have is _______________.",
+      "heat": "provocative"
+    },
+    {
+      "id": 68,
+      "text": "You'd ruin a first impression by admitting _______________.",
+      "heat": "provocative"
+    },
+    {
+      "id": 69,
+      "text": "Your mid-conversation daydream right now is _______________.",
+      "heat": "provocative"
+    },
+    {
+      "id": 70,
+      "text": "You've stayed too long because of _______________.",
+      "heat": "provocative"
+    },
+    {
+      "id": 71,
+      "text": "Your secret confidence comes from _______________.",
+      "heat": "provocative"
+    },
+    {
+      "id": 72,
+      "text": "You want someone to call you out for _______________.",
+      "heat": "provocative"
+    },
+    {
+      "id": 73,
+      "text": "Your late-night honesty sounds like _______________.",
+      "heat": "provocative"
+    },
+    {
+      "id": 74,
+      "text": "The thing that would make you leave mid-date is _______________.",
+      "heat": "provocative"
+    }
+  ],
+  "choices": [
+    {
+      "id": 1,
+      "text": "a chaotic good playlist",
+      "heat": "default"
+    },
+    {
+      "id": 2,
+      "text": "accidentally oversharing",
+      "heat": "default"
+    },
+    {
+      "id": 3,
+      "text": "main character energy",
+      "heat": "default"
+    },
+    {
+      "id": 4,
+      "text": "knowing exactly when to pause",
+      "heat": "default"
+    },
+    {
+      "id": 5,
+      "text": "a soft laugh you didn't expect",
+      "heat": "default"
+    },
+    {
+      "id": 6,
+      "text": "eye contact that lasts one second too long",
+      "heat": "default"
+    },
+    {
+      "id": 7,
+      "text": "a terrible joke that somehow works",
+      "heat": "default"
+    },
+    {
+      "id": 8,
+      "text": "quiet confidence",
+      "heat": "default"
+    },
+    {
+      "id": 9,
+      "text": "asking better questions than answers",
+      "heat": "default"
+    },
+    {
+      "id": 10,
+      "text": "looking like trouble in a nice way",
+      "heat": "default"
+    },
+    {
+      "id": 11,
+      "text": "remembering tiny details",
+      "heat": "default"
+    },
+    {
+      "id": 12,
+      "text": "being harder to impress than you let on",
+      "heat": "default"
+    },
+    {
+      "id": 13,
+      "text": "a story with no clean ending",
+      "heat": "default"
+    },
+    {
+      "id": 14,
+      "text": "leaving people curious",
+      "heat": "default"
+    },
+    {
+      "id": 15,
+      "text": "saying the quiet part out loud",
+      "heat": "default"
+    },
+    {
+      "id": 16,
+      "text": "looking calm while scheming",
+      "heat": "default"
+    },
+    {
+      "id": 17,
+      "text": "a compliment that lands too well",
+      "heat": "default"
+    },
+    {
+      "id": 18,
+      "text": "changing the subject at the perfect time",
+      "heat": "default"
+    },
+    {
+      "id": 19,
+      "text": "being unexpectedly earnest",
+      "heat": "default"
+    },
+    {
+      "id": 20,
+      "text": "a side glance that says everything",
+      "heat": "default"
+    },
+    {
+      "id": 21,
+      "text": "owning an awkward silence",
+      "heat": "default"
+    },
+    {
+      "id": 22,
+      "text": "making strangers feel like regulars",
+      "heat": "default"
+    },
+    {
+      "id": 23,
+      "text": "a mysterious calendar invite",
+      "heat": "default"
+    },
+    {
+      "id": 24,
+      "text": "refusing to play it cool",
+      "heat": "default"
+    },
+    {
+      "id": 25,
+      "text": "being the plot twist",
+      "heat": "default"
+    },
+    {
+      "id": 26,
+      "text": "soft chaos",
+      "heat": "default"
+    },
+    {
+      "id": 27,
+      "text": "a dare you're half-ready for",
+      "heat": "default"
+    },
+    {
+      "id": 28,
+      "text": "reading the room and rewriting it",
+      "heat": "default"
+    },
+    {
+      "id": 29,
+      "text": "a smile you try to hide",
+      "heat": "default"
+    },
+    {
+      "id": 30,
+      "text": "being interestingly inconsistent",
+      "heat": "default"
+    },
+    {
+      "id": 31,
+      "text": "a playlist named after a feeling",
+      "heat": "default"
+    },
+    {
+      "id": 32,
+      "text": "asking 'wait, really?' at the right time",
+      "heat": "default"
+    },
+    {
+      "id": 33,
+      "text": "looking like you have a plan B",
+      "heat": "default"
+    },
+    {
+      "id": 34,
+      "text": "an honest shrug",
+      "heat": "default"
+    },
+    {
+      "id": 35,
+      "text": "being deliciously hard to categorize",
+      "heat": "default"
+    },
+    {
+      "id": 36,
+      "text": "a half-confession",
+      "heat": "default"
+    },
+    {
+      "id": 37,
+      "text": "making curiosity feel mutual",
+      "heat": "default"
+    },
+    {
+      "id": 38,
+      "text": "a bold guess about someone",
+      "heat": "default"
+    },
+    {
+      "id": 39,
+      "text": "being the reason the vibe shifts",
+      "heat": "default"
+    },
+    {
+      "id": 40,
+      "text": "a carefully uncareful compliment",
+      "heat": "default"
+    },
+    {
+      "id": 41,
+      "text": "choosing honesty over charm",
+      "heat": "default"
+    },
+    {
+      "id": 42,
+      "text": "choosing charm over honesty",
+      "heat": "default"
+    },
+    {
+      "id": 43,
+      "text": "a story you're not ready to finish",
+      "heat": "default"
+    },
+    {
+      "id": 44,
+      "text": "looking like you'd be a great bad influence",
+      "heat": "default"
+    },
+    {
+      "id": 45,
+      "text": "being oddly specific",
+      "heat": "default"
+    },
+    {
+      "id": 46,
+      "text": "a pause that feels intentional",
+      "heat": "default"
+    },
+    {
+      "id": 47,
+      "text": "making people rewrite their first impression",
+      "heat": "default"
+    },
+    {
+      "id": 48,
+      "text": "a laugh that gives you away",
+      "heat": "default"
+    },
+    {
+      "id": 49,
+      "text": "being the person who notices first",
+      "heat": "default"
+    },
+    {
+      "id": 50,
+      "text": "an invitation disguised as a question",
+      "heat": "default"
+    },
+    {
+      "id": 51,
+      "text": "soft intensity",
+      "heat": "default"
+    },
+    {
+      "id": 52,
+      "text": "being slightly too interesting",
+      "heat": "default"
+    },
+    {
+      "id": 53,
+      "text": "pineapple on pizza, proudly",
+      "heat": "innocent"
+    },
+    {
+      "id": 54,
+      "text": "reorganizing other people's shelves",
+      "heat": "innocent"
+    },
+    {
+      "id": 55,
+      "text": "naming houseplants",
+      "heat": "innocent"
+    },
+    {
+      "id": 56,
+      "text": "crying at commercials",
+      "heat": "innocent"
+    },
+    {
+      "id": 57,
+      "text": "collecting tote bags",
+      "heat": "innocent"
+    },
+    {
+      "id": 58,
+      "text": "sending voice notes that are too long",
+      "heat": "innocent"
+    },
+    {
+      "id": 59,
+      "text": "a breakfast-for-dinner habit",
+      "heat": "innocent"
+    },
+    {
+      "id": 60,
+      "text": "ranking every coffee shop",
+      "heat": "innocent"
+    },
+    {
+      "id": 61,
+      "text": "talking to dogs in public",
+      "heat": "innocent"
+    },
+    {
+      "id": 62,
+      "text": "keeping receipts for lore reasons",
+      "heat": "innocent"
+    },
+    {
+      "id": 63,
+      "text": "an encyclopedic snack knowledge",
+      "heat": "innocent"
+    },
+    {
+      "id": 64,
+      "text": "falling asleep mid-movie",
+      "heat": "innocent"
+    },
+    {
+      "id": 65,
+      "text": "a deeply specific hobby",
+      "heat": "innocent"
+    },
+    {
+      "id": 66,
+      "text": "wearing the same lucky hoodie",
+      "heat": "innocent"
+    },
+    {
+      "id": 67,
+      "text": "making spreadsheets for fun",
+      "heat": "innocent"
+    },
+    {
+      "id": 68,
+      "text": "quoting the same three shows",
+      "heat": "innocent"
+    },
+    {
+      "id": 69,
+      "text": "getting lost on purpose",
+      "heat": "innocent"
+    },
+    {
+      "id": 70,
+      "text": "a scrapbook of ticket stubs",
+      "heat": "innocent"
+    },
+    {
+      "id": 71,
+      "text": "being early to everything",
+      "heat": "innocent"
+    },
+    {
+      "id": 72,
+      "text": "being late with a good excuse",
+      "heat": "innocent"
+    },
+    {
+      "id": 73,
+      "text": "a comfort podcast on loop",
+      "heat": "innocent"
+    },
+    {
+      "id": 74,
+      "text": "learning one dance from TikTok",
+      "heat": "innocent"
+    },
+    {
+      "id": 75,
+      "text": "saving memes like they're documents",
+      "heat": "innocent"
+    },
+    {
+      "id": 76,
+      "text": "a soft spot for thrift stores",
+      "heat": "innocent"
+    },
+    {
+      "id": 77,
+      "text": "narrating your own life",
+      "heat": "innocent"
+    },
+    {
+      "id": 78,
+      "text": "a ridiculous pet theory",
+      "heat": "innocent"
+    },
+    {
+      "id": 79,
+      "text": "always carrying a charger",
+      "heat": "innocent"
+    },
+    {
+      "id": 80,
+      "text": "knowing every local bakery",
+      "heat": "innocent"
+    },
+    {
+      "id": 81,
+      "text": "a signature walk",
+      "heat": "innocent"
+    },
+    {
+      "id": 82,
+      "text": "being the group photographer",
+      "heat": "innocent"
+    },
+    {
+      "id": 83,
+      "text": "a scandalously good first impression",
+      "heat": "provocative"
+    },
+    {
+      "id": 84,
+      "text": "flirting like it's a competitive sport",
+      "heat": "provocative"
+    },
+    {
+      "id": 85,
+      "text": "a red-flag hobby you defend anyway",
+      "heat": "provocative"
+    },
+    {
+      "id": 86,
+      "text": "texting back too fast on purpose",
+      "heat": "provocative"
+    },
+    {
+      "id": 87,
+      "text": "texting back too slow on purpose",
+      "heat": "provocative"
+    },
+    {
+      "id": 88,
+      "text": "a dating app bio that starts fights",
+      "heat": "provocative"
+    },
+    {
+      "id": 89,
+      "text": "wanting the last word and the last look",
+      "heat": "provocative"
+    },
+    {
+      "id": 90,
+      "text": "a crush on competence",
+      "heat": "provocative"
+    },
+    {
+      "id": 91,
+      "text": "telling the truth when it's inconvenient",
+      "heat": "provocative"
+    },
+    {
+      "id": 92,
+      "text": "a soft voice with sharp opinions",
+      "heat": "provocative"
+    },
+    {
+      "id": 93,
+      "text": "being a little too honest after midnight",
+      "heat": "provocative"
+    },
+    {
+      "id": 94,
+      "text": "liking tension more than comfort",
+      "heat": "provocative"
+    },
+    {
+      "id": 95,
+      "text": "a history of dramatic exits",
+      "heat": "provocative"
+    },
+    {
+      "id": 96,
+      "text": "wanting to be someone's plot twist",
+      "heat": "provocative"
+    },
+    {
+      "id": 97,
+      "text": "a boundary you enjoy testing carefully",
+      "heat": "provocative"
+    },
+    {
+      "id": 98,
+      "text": "making jealousy look accidental",
+      "heat": "provocative"
+    },
+    {
+      "id": 99,
+      "text": "a reputation you half-earned",
+      "heat": "provocative"
+    },
+    {
+      "id": 100,
+      "text": "kissing like it's a negotiation",
+      "heat": "provocative"
+    },
+    {
+      "id": 101,
+      "text": "preferring chemistry over compatibility",
+      "heat": "provocative"
+    },
+    {
+      "id": 102,
+      "text": "saying 'don't fall for me' as a dare",
+      "heat": "provocative"
+    },
+    {
+      "id": 103,
+      "text": "a secret competitive streak in romance",
+      "heat": "provocative"
+    },
+    {
+      "id": 104,
+      "text": "wanting eye contact during hard conversations",
+      "heat": "provocative"
+    },
+    {
+      "id": 105,
+      "text": "being dangerously good at apologies",
+      "heat": "provocative"
+    },
+    {
+      "id": 106,
+      "text": "a soft no that means maybe",
+      "heat": "provocative"
+    },
+    {
+      "id": 107,
+      "text": "a hard yes that surprises you",
+      "heat": "provocative"
+    },
+    {
+      "id": 108,
+      "text": "liking people who challenge you",
+      "heat": "provocative"
+    },
+    {
+      "id": 109,
+      "text": "wanting to be read like a book",
+      "heat": "provocative"
+    },
+    {
+      "id": 110,
+      "text": "leaving just enough unsaid",
+      "heat": "provocative"
+    },
+    {
+      "id": 111,
+      "text": "a bold compliment with no exit plan",
+      "heat": "provocative"
+    },
+    {
+      "id": 112,
+      "text": "treating vulnerability like a flex",
+      "heat": "provocative"
+    },
+    {
+      "id": 113,
+      "text": "being the reason someone rethinks their type",
+      "heat": "provocative"
+    },
+    {
+      "id": 114,
+      "text": "wanting mutual ruin, lightly",
+      "heat": "provocative"
+    }
+  ]
+}
