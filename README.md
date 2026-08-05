@@ -78,14 +78,28 @@ The host can adjust this on the home screen and in the lobby before starting.
 
 ## Build a universal Android APK
 
-Fat APK with **armeabi-v7a**, **arm64-v8a**, and **x86_64** (Flutter no longer ships 32-bit x86):
+Versioning is derived from git automatically:
+
+- **versionCode** (`build-number`): `git rev-list --count HEAD`
+- **versionName** (`build-name`): exact git tag on HEAD (optional leading `v` stripped), otherwise `0.1.<commit-count>`
 
 ```bash
-flutter build apk --release
+chmod +x tool/build_apk.sh tool/git_version.sh
+./tool/build_apk.sh
 # → build/app/outputs/flutter-apk/app-release.apk
+
+# Inspect the computed version:
+./tool/git_version.sh
 ```
 
-Do **not** use `--split-per-abi` if you want one installable for devices and x86_64 emulators.
+Fat APK includes **armeabi-v7a**, **arm64-v8a**, and **x86_64**. Do not use `--split-per-abi` if you want one installable for devices and x86_64 emulators.
+
+To cut a named release, tag then build:
+
+```bash
+git tag v0.2.0
+./tool/build_apk.sh   # versionName=0.2.0, versionCode=<commit count>
+```
 
 ## Online play (not in v1)
 
