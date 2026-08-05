@@ -1,0 +1,946 @@
+{
+  "statements": [
+    {
+      "id": 1,
+      "text": "I love it most when you look at me like _______________.",
+      "heat": "default"
+    },
+    {
+      "id": 2,
+      "text": "Your skin feels like _______________.",
+      "heat": "default"
+    },
+    {
+      "id": 3,
+      "text": "Just thinking about the way you _______________ drives me crazy.",
+      "heat": "default"
+    },
+    {
+      "id": 4,
+      "text": "I want you to _______________ me right now.",
+      "heat": "default"
+    },
+    {
+      "id": 5,
+      "text": "Your favorite thing about me is _______________.",
+      "heat": "default"
+    },
+    {
+      "id": 6,
+      "text": "The best secret we share is _______________.",
+      "heat": "default"
+    },
+    {
+      "id": 7,
+      "text": "I'm completely mesmerized when you _______________.",
+      "heat": "default"
+    },
+    {
+      "id": 8,
+      "text": "The way you _______________ is driving me wild.",
+      "heat": "default"
+    },
+    {
+      "id": 9,
+      "text": "You look incredibly _______________ in those clothes.",
+      "heat": "default"
+    },
+    {
+      "id": 10,
+      "text": "I'm dreaming about the time we _______________.",
+      "heat": "default"
+    },
+    {
+      "id": 11,
+      "text": "Nothing beats the feeling of _______________.",
+      "heat": "default"
+    },
+    {
+      "id": 12,
+      "text": "Your touch makes me _______________.",
+      "heat": "default"
+    },
+    {
+      "id": 13,
+      "text": "I can't wait to _______________ you tonight.",
+      "heat": "default"
+    },
+    {
+      "id": 14,
+      "text": "The thought of _______________ makes everything better.",
+      "heat": "default"
+    },
+    {
+      "id": 15,
+      "text": "If you _______________ right now, I'd _______________.",
+      "heat": "default"
+    },
+    {
+      "id": 16,
+      "text": "That look you're giving me means _______________.",
+      "heat": "default"
+    },
+    {
+      "id": 17,
+      "text": "I'm imagining you _______________ right now.",
+      "heat": "default"
+    },
+    {
+      "id": 18,
+      "text": "You're so good at _______________.",
+      "heat": "default"
+    },
+    {
+      "id": 19,
+      "text": "We should _______________ more often.",
+      "heat": "default"
+    },
+    {
+      "id": 20,
+      "text": "I love it when you _______________.",
+      "heat": "default"
+    },
+    {
+      "id": 21,
+      "text": "Let's do something _______________ tonight.",
+      "heat": "default"
+    },
+    {
+      "id": 22,
+      "text": "Your _______________ is driving me crazy.",
+      "heat": "default"
+    },
+    {
+      "id": 23,
+      "text": "I want to _______________ you until _______________.",
+      "heat": "default"
+    },
+    {
+      "id": 24,
+      "text": "You look so _______________ when _______________.",
+      "heat": "default"
+    },
+    {
+      "id": 25,
+      "text": "I can't stop thinking about _______________.",
+      "heat": "default"
+    },
+    {
+      "id": 26,
+      "text": "The way you _______________ makes my heart race.",
+      "heat": "default"
+    },
+    {
+      "id": 27,
+      "text": "I have a secret _______________.",
+      "heat": "default"
+    },
+    {
+      "id": 28,
+      "text": "Promise me you won't _______________.",
+      "heat": "default"
+    },
+    {
+      "id": 29,
+      "text": "You're my favorite _______________.",
+      "heat": "default"
+    },
+    {
+      "id": 30,
+      "text": "I'm ready to _______________ right now.",
+      "heat": "default"
+    },
+    {
+      "id": 1001,
+      "text": "Holding your hand makes me feel _______________.",
+      "heat": "innocent"
+    },
+    {
+      "id": 1002,
+      "text": "My favorite soft moment with you is _______________.",
+      "heat": "innocent"
+    },
+    {
+      "id": 1003,
+      "text": "You always make me smile when you _______________.",
+      "heat": "innocent"
+    },
+    {
+      "id": 1004,
+      "text": "I feel safest when we _______________.",
+      "heat": "innocent"
+    },
+    {
+      "id": 1005,
+      "text": "The sweetest thing about you is _______________.",
+      "heat": "innocent"
+    },
+    {
+      "id": 1006,
+      "text": "I could talk to you forever about _______________.",
+      "heat": "innocent"
+    },
+    {
+      "id": 1007,
+      "text": "A perfect rainy day with you means _______________.",
+      "heat": "innocent"
+    },
+    {
+      "id": 1008,
+      "text": "You spoil me when you _______________.",
+      "heat": "innocent"
+    },
+    {
+      "id": 1009,
+      "text": "I still get butterflies from _______________.",
+      "heat": "innocent"
+    },
+    {
+      "id": 1010,
+      "text": "Our cutest tradition is _______________.",
+      "heat": "innocent"
+    },
+    {
+      "id": 1011,
+      "text": "I love falling asleep to _______________.",
+      "heat": "innocent"
+    },
+    {
+      "id": 1012,
+      "text": "You look adorable when _______________.",
+      "heat": "innocent"
+    },
+    {
+      "id": 1013,
+      "text": "Nothing feels more like home than _______________.",
+      "heat": "innocent"
+    },
+    {
+      "id": 1014,
+      "text": "I want more mornings filled with _______________.",
+      "heat": "innocent"
+    },
+    {
+      "id": 1015,
+      "text": "The first thing I notice about you is _______________.",
+      "heat": "innocent"
+    },
+    {
+      "id": 1016,
+      "text": "You make ordinary days feel like _______________.",
+      "heat": "innocent"
+    },
+    {
+      "id": 1017,
+      "text": "I'd choose you every time for _______________.",
+      "heat": "innocent"
+    },
+    {
+      "id": 1018,
+      "text": "My favorite compliment from you is _______________.",
+      "heat": "innocent"
+    },
+    {
+      "id": 1019,
+      "text": "We're at our sweetest when we _______________.",
+      "heat": "innocent"
+    },
+    {
+      "id": 1020,
+      "text": "Promise me we'll always _______________.",
+      "heat": "innocent"
+    },
+    {
+      "id": 1021,
+      "text": "I feel lucky because _______________.",
+      "heat": "innocent"
+    },
+    {
+      "id": 1022,
+      "text": "A gentle yes from you sounds like _______________.",
+      "heat": "innocent"
+    },
+    {
+      "id": 3001,
+      "text": "I want your hands _______________ tonight.",
+      "heat": "provocative"
+    },
+    {
+      "id": 3002,
+      "text": "Don't stop until I _______________.",
+      "heat": "provocative"
+    },
+    {
+      "id": 3003,
+      "text": "The dirtiest thought I had about you today was _______________.",
+      "heat": "provocative"
+    },
+    {
+      "id": 3004,
+      "text": "Tease me by _______________.",
+      "heat": "provocative"
+    },
+    {
+      "id": 3005,
+      "text": "I'd let you _______________ if nobody was watching.",
+      "heat": "provocative"
+    },
+    {
+      "id": 3006,
+      "text": "Whisper _______________ against my skin.",
+      "heat": "provocative"
+    },
+    {
+      "id": 3007,
+      "text": "I'm aching for _______________.",
+      "heat": "provocative"
+    },
+    {
+      "id": 3008,
+      "text": "Pin me down and _______________.",
+      "heat": "provocative"
+    },
+    {
+      "id": 3009,
+      "text": "You drive me crazy when you _______________ like that.",
+      "heat": "provocative"
+    },
+    {
+      "id": 3010,
+      "text": "Take me somewhere private and _______________.",
+      "heat": "provocative"
+    },
+    {
+      "id": 3011,
+      "text": "I can't keep quiet if you _______________.",
+      "heat": "provocative"
+    },
+    {
+      "id": 3012,
+      "text": "My body reacts when you _______________.",
+      "heat": "provocative"
+    },
+    {
+      "id": 3013,
+      "text": "Leave a mark where _______________.",
+      "heat": "provocative"
+    },
+    {
+      "id": 3014,
+      "text": "I dare you to _______________ right now.",
+      "heat": "provocative"
+    },
+    {
+      "id": 3015,
+      "text": "Undress me with _______________.",
+      "heat": "provocative"
+    },
+    {
+      "id": 3016,
+      "text": "Keep going until _______________.",
+      "heat": "provocative"
+    },
+    {
+      "id": 3017,
+      "text": "I want to taste _______________.",
+      "heat": "provocative"
+    },
+    {
+      "id": 3018,
+      "text": "Make me beg for _______________.",
+      "heat": "provocative"
+    },
+    {
+      "id": 3019,
+      "text": "The sheets will remember _______________.",
+      "heat": "provocative"
+    },
+    {
+      "id": 3020,
+      "text": "Pull me closer when _______________.",
+      "heat": "provocative"
+    },
+    {
+      "id": 3021,
+      "text": "Ruin my composure by _______________.",
+      "heat": "provocative"
+    },
+    {
+      "id": 3022,
+      "text": "Tonight I'm yours for _______________.",
+      "heat": "provocative"
+    }
+  ],
+  "choices": [
+    {
+      "id": 1,
+      "text": "A slow dance in the kitchen.",
+      "heat": "default"
+    },
+    {
+      "id": 2,
+      "text": "A massage with no end in sight.",
+      "heat": "default"
+    },
+    {
+      "id": 3,
+      "text": "Whispering something wicked.",
+      "heat": "default"
+    },
+    {
+      "id": 4,
+      "text": "Wearing absolutely nothing.",
+      "heat": "default"
+    },
+    {
+      "id": 5,
+      "text": "Laughing until we can't breathe.",
+      "heat": "default"
+    },
+    {
+      "id": 6,
+      "text": "A deep, lingering kiss.",
+      "heat": "default"
+    },
+    {
+      "id": 7,
+      "text": "Stealing a private moment.",
+      "heat": "default"
+    },
+    {
+      "id": 8,
+      "text": "Unlocking a new fantasy.",
+      "heat": "default"
+    },
+    {
+      "id": 9,
+      "text": "Knowing exactly how to push my buttons.",
+      "heat": "default"
+    },
+    {
+      "id": 10,
+      "text": "Making me forget my own name.",
+      "heat": "default"
+    },
+    {
+      "id": 11,
+      "text": "Reading between the lines.",
+      "heat": "default"
+    },
+    {
+      "id": 12,
+      "text": "A surprise weekend getaway.",
+      "heat": "default"
+    },
+    {
+      "id": 13,
+      "text": "Running your hands through my hair.",
+      "heat": "default"
+    },
+    {
+      "id": 14,
+      "text": "An accidental touch that lingers.",
+      "heat": "default"
+    },
+    {
+      "id": 15,
+      "text": "A gaze that says it all.",
+      "heat": "default"
+    },
+    {
+      "id": 16,
+      "text": "A playful bite.",
+      "heat": "default"
+    },
+    {
+      "id": 17,
+      "text": "Sharing a scandalous memory.",
+      "heat": "default"
+    },
+    {
+      "id": 18,
+      "text": "Your eyes locking with mine across the room.",
+      "heat": "default"
+    },
+    {
+      "id": 19,
+      "text": "A late-night adventure.",
+      "heat": "default"
+    },
+    {
+      "id": 20,
+      "text": "The smell of your favorite perfume.",
+      "heat": "default"
+    },
+    {
+      "id": 21,
+      "text": "A teasing look.",
+      "heat": "default"
+    },
+    {
+      "id": 22,
+      "text": "A midnight snack in bed.",
+      "heat": "default"
+    },
+    {
+      "id": 23,
+      "text": "Exploring the hidden parts of the house.",
+      "heat": "default"
+    },
+    {
+      "id": 24,
+      "text": "Holding hands in public.",
+      "heat": "default"
+    },
+    {
+      "id": 25,
+      "text": "Whispering secrets into my ear.",
+      "heat": "default"
+    },
+    {
+      "id": 26,
+      "text": "Waking up next to you.",
+      "heat": "default"
+    },
+    {
+      "id": 27,
+      "text": "A quiet conversation late at night.",
+      "heat": "default"
+    },
+    {
+      "id": 28,
+      "text": "A knowing smirk.",
+      "heat": "default"
+    },
+    {
+      "id": 29,
+      "text": "A shared look that needs no words.",
+      "heat": "default"
+    },
+    {
+      "id": 30,
+      "text": "The way you fit against me.",
+      "heat": "default"
+    },
+    {
+      "id": 31,
+      "text": "Your laugh.",
+      "heat": "default"
+    },
+    {
+      "id": 32,
+      "text": "The brush of your fingers.",
+      "heat": "default"
+    },
+    {
+      "id": 33,
+      "text": "A late-night drive.",
+      "heat": "default"
+    },
+    {
+      "id": 34,
+      "text": "Your smile.",
+      "heat": "default"
+    },
+    {
+      "id": 35,
+      "text": "The sound of your voice.",
+      "heat": "default"
+    },
+    {
+      "id": 36,
+      "text": "Remembering our first kiss.",
+      "heat": "default"
+    },
+    {
+      "id": 37,
+      "text": "Planning our next big adventure.",
+      "heat": "default"
+    },
+    {
+      "id": 38,
+      "text": "Your handwriting on a note.",
+      "heat": "default"
+    },
+    {
+      "id": 39,
+      "text": "A simple, loving gesture.",
+      "heat": "default"
+    },
+    {
+      "id": 40,
+      "text": "The way you support me.",
+      "heat": "default"
+    },
+    {
+      "id": 41,
+      "text": "Just being near you.",
+      "heat": "default"
+    },
+    {
+      "id": 42,
+      "text": "A gentle kiss on the forehead.",
+      "heat": "default"
+    },
+    {
+      "id": 43,
+      "text": "A warm embrace.",
+      "heat": "default"
+    },
+    {
+      "id": 44,
+      "text": "Your constant encouragement.",
+      "heat": "default"
+    },
+    {
+      "id": 45,
+      "text": "A fun inside joke.",
+      "heat": "default"
+    },
+    {
+      "id": 46,
+      "text": "A shared moment of joy.",
+      "heat": "default"
+    },
+    {
+      "id": 47,
+      "text": "Your patience.",
+      "heat": "default"
+    },
+    {
+      "id": 48,
+      "text": "A peaceful evening together.",
+      "heat": "default"
+    },
+    {
+      "id": 49,
+      "text": "Looking at old photos.",
+      "heat": "default"
+    },
+    {
+      "id": 50,
+      "text": "Your thoughtful surprises.",
+      "heat": "default"
+    },
+    {
+      "id": 51,
+      "text": "The way you make me feel special.",
+      "heat": "default"
+    },
+    {
+      "id": 52,
+      "text": "Everything about you.",
+      "heat": "default"
+    },
+    {
+      "id": 2001,
+      "text": "A forehead kiss.",
+      "heat": "innocent"
+    },
+    {
+      "id": 2002,
+      "text": "Sharing a blanket on the couch.",
+      "heat": "innocent"
+    },
+    {
+      "id": 2003,
+      "text": "Your sleepy smile.",
+      "heat": "innocent"
+    },
+    {
+      "id": 2004,
+      "text": "Making pancakes together.",
+      "heat": "innocent"
+    },
+    {
+      "id": 2005,
+      "text": "A handwritten note.",
+      "heat": "innocent"
+    },
+    {
+      "id": 2006,
+      "text": "Walking side by side.",
+      "heat": "innocent"
+    },
+    {
+      "id": 2007,
+      "text": "Your laugh in the kitchen.",
+      "heat": "innocent"
+    },
+    {
+      "id": 2008,
+      "text": "Matching coffee orders.",
+      "heat": "innocent"
+    },
+    {
+      "id": 2009,
+      "text": "A quiet hug that lasts.",
+      "heat": "innocent"
+    },
+    {
+      "id": 2010,
+      "text": "Watching the sunset.",
+      "heat": "innocent"
+    },
+    {
+      "id": 2011,
+      "text": "Your favorite playlist.",
+      "heat": "innocent"
+    },
+    {
+      "id": 2012,
+      "text": "Leaving me little reminders.",
+      "heat": "innocent"
+    },
+    {
+      "id": 2013,
+      "text": "Calling me just to say hi.",
+      "heat": "innocent"
+    },
+    {
+      "id": 2014,
+      "text": "Dancing in the living room.",
+      "heat": "innocent"
+    },
+    {
+      "id": 2015,
+      "text": "Holding the door open.",
+      "heat": "innocent"
+    },
+    {
+      "id": 2016,
+      "text": "A bouquet of grocery-store flowers.",
+      "heat": "innocent"
+    },
+    {
+      "id": 2017,
+      "text": "Your warm hoodie.",
+      "heat": "innocent"
+    },
+    {
+      "id": 2018,
+      "text": "Reading in the same room.",
+      "heat": "innocent"
+    },
+    {
+      "id": 2019,
+      "text": "A gentle squeeze of my hand.",
+      "heat": "innocent"
+    },
+    {
+      "id": 2020,
+      "text": "Saying goodnight first.",
+      "heat": "innocent"
+    },
+    {
+      "id": 2021,
+      "text": "Our inside jokes.",
+      "heat": "innocent"
+    },
+    {
+      "id": 2022,
+      "text": "Packing me a snack.",
+      "heat": "innocent"
+    },
+    {
+      "id": 2023,
+      "text": "Remembering the little things.",
+      "heat": "innocent"
+    },
+    {
+      "id": 2024,
+      "text": "A soft 'I love you.'",
+      "heat": "innocent"
+    },
+    {
+      "id": 2025,
+      "text": "Stargazing from the porch.",
+      "heat": "innocent"
+    },
+    {
+      "id": 2026,
+      "text": "Your patient listening.",
+      "heat": "innocent"
+    },
+    {
+      "id": 2027,
+      "text": "Building a pillow fort.",
+      "heat": "innocent"
+    },
+    {
+      "id": 2028,
+      "text": "Sunday morning laziness.",
+      "heat": "innocent"
+    },
+    {
+      "id": 2029,
+      "text": "A shared dessert.",
+      "heat": "innocent"
+    },
+    {
+      "id": 2030,
+      "text": "Coming home to you.",
+      "heat": "innocent"
+    },
+    {
+      "id": 4001,
+      "text": "Slowly, then all at once.",
+      "heat": "provocative"
+    },
+    {
+      "id": 4002,
+      "text": "A bite that almost hurts.",
+      "heat": "provocative"
+    },
+    {
+      "id": 4003,
+      "text": "Your mouth where it shouldn't be in public.",
+      "heat": "provocative"
+    },
+    {
+      "id": 4004,
+      "text": "Stripping me with your eyes first.",
+      "heat": "provocative"
+    },
+    {
+      "id": 4005,
+      "text": "A low growl in my ear.",
+      "heat": "provocative"
+    },
+    {
+      "id": 4006,
+      "text": "Hands under my clothes.",
+      "heat": "provocative"
+    },
+    {
+      "id": 4007,
+      "text": "Making me wait for it.",
+      "heat": "provocative"
+    },
+    {
+      "id": 4008,
+      "text": "Kissing down my neck.",
+      "heat": "provocative"
+    },
+    {
+      "id": 4009,
+      "text": "A filthy little secret.",
+      "heat": "provocative"
+    },
+    {
+      "id": 4010,
+      "text": "Losing every last button.",
+      "heat": "provocative"
+    },
+    {
+      "id": 4011,
+      "text": "Your thigh between mine.",
+      "heat": "provocative"
+    },
+    {
+      "id": 4012,
+      "text": "Breath hot against my lips.",
+      "heat": "provocative"
+    },
+    {
+      "id": 4013,
+      "text": "Bent over the nearest surface.",
+      "heat": "provocative"
+    },
+    {
+      "id": 4014,
+      "text": "A moan I can't hide.",
+      "heat": "provocative"
+    },
+    {
+      "id": 4015,
+      "text": "Fingers tracing every inch.",
+      "heat": "provocative"
+    },
+    {
+      "id": 4016,
+      "text": "Saying my name like a command.",
+      "heat": "provocative"
+    },
+    {
+      "id": 4017,
+      "text": "Clothes on the floor.",
+      "heat": "provocative"
+    },
+    {
+      "id": 4018,
+      "text": "That wicked smile.",
+      "heat": "provocative"
+    },
+    {
+      "id": 4019,
+      "text": "Not coming up for air.",
+      "heat": "provocative"
+    },
+    {
+      "id": 4020,
+      "text": "A grip that says mine.",
+      "heat": "provocative"
+    },
+    {
+      "id": 4021,
+      "text": "Teasing until I break.",
+      "heat": "provocative"
+    },
+    {
+      "id": 4022,
+      "text": "Skin on skin, no interruptions.",
+      "heat": "provocative"
+    },
+    {
+      "id": 4023,
+      "text": "Your tongue doing the talking.",
+      "heat": "provocative"
+    },
+    {
+      "id": 4024,
+      "text": "Leaving the lights on.",
+      "heat": "provocative"
+    },
+    {
+      "id": 4025,
+      "text": "A midnight quickie.",
+      "heat": "provocative"
+    },
+    {
+      "id": 4026,
+      "text": "Begging without words.",
+      "heat": "provocative"
+    },
+    {
+      "id": 4027,
+      "text": "That spot you always find.",
+      "heat": "provocative"
+    },
+    {
+      "id": 4028,
+      "text": "Waking me up hungry for you.",
+      "heat": "provocative"
+    },
+    {
+      "id": 4029,
+      "text": "A locked door and no rush.",
+      "heat": "provocative"
+    },
+    {
+      "id": 4030,
+      "text": "Whatever you want from me.",
+      "heat": "provocative"
+    },
+    {
+      "id": 4031,
+      "text": "My legs wrapped around you.",
+      "heat": "provocative"
+    },
+    {
+      "id": 4032,
+      "text": "A whispered yes.",
+      "heat": "provocative"
+    }
+  ]
+}
