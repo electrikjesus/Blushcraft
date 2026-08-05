@@ -6,107 +6,202 @@ import 'package:flutter/material.dart';
 import '../../camera/reaction_camera.dart';
 import '../theme.dart';
 
-/// Compact peer + self camera overlay that stays clear of game content.
-class ReactionPip extends StatelessWidget {
-  const ReactionPip({
+/// How reaction cameras sit relative to game content.
+enum ReactionAvLayout {
+  /// Peer tile beside content (better on tablets / landscape).
+  side,
+
+  /// Compact peer + self row above content (better on phones).
+  strip,
+}
+
+/// User preference; [auto] picks strip under 600px width, side otherwise.
+enum ReactionAvLayoutPref {
+  auto,
+  strip,
+  side;
+
+  String get storageValue => name;
+
+  static ReactionAvLayoutPref fromStorage(String? raw) {
+    return ReactionAvLayoutPref.values.firstWhere(
+      (v) => v.name == raw,
+      orElse: () => ReactionAvLayoutPref.auto,
+    );
+  }
+
+  ReactionAvLayout resolve({required double width}) {
+    switch (this) {
+      case ReactionAvLayoutPref.strip:
+        return ReactionAvLayout.strip;
+      case ReactionAvLayoutPref.side:
+        return ReactionAvLayout.side;
+      case ReactionAvLayoutPref.auto:
+        return width < 600 ? ReactionAvLayout.strip : ReactionAvLayout.side;
+    }
+  }
+
+  String get label {
+    switch (this) {
+      case ReactionAvLayoutPref.auto:
+        return 'Auto layout';
+      case ReactionAvLayoutPref.strip:
+        return 'Camera row';
+      case ReactionAvLayoutPref.side:
+        return 'Side panel';
+    }
+  }
+
+  IconData get icon {
+    switch (this) {
+      case ReactionAvLayoutPref.auto:
+        return Icons.stay_current_portrait;
+      case ReactionAvLayoutPref.strip:
+        return Icons.view_agenda_outlined;
+      case ReactionAvLayoutPref.side:
+        return Icons.vertical_split_outlined;
+    }
+  }
+
+  ReactionAvLayoutPref get next {
+    final i = index;
+    return ReactionAvLayoutPref.values[(i + 1) % ReactionAvLayoutPref.values.length];
+  }
+}
+
+/// Peer + self cameras with mic/camera toggles.
+///
+/// [ReactionAvLayout.strip] is a short horizontal bar for phones.
+/// [ReactionAvLayout.side] is the classic top-right PiP for wider screens.
+class ReactionAvPanel extends StatelessWidget {
+  const ReactionAvPanel({
     super.key,
     required this.av,
+    required this.layout,
+    required this.layoutPref,
     this.peerJpeg,
     this.peerVideo,
     this.localVideo,
     required this.onToggleCamera,
     required this.onToggleMic,
-    this.alignment = Alignment.topRight,
+    required this.onCycleLayout,
   });
 
   final ReactionAvController av;
+  final ReactionAvLayout layout;
+  final ReactionAvLayoutPref layoutPref;
   final Uint8List? peerJpeg;
   final Widget? peerVideo;
   final Widget? localVideo;
   final VoidCallback onToggleCamera;
   final VoidCallback onToggleMic;
-  final Alignment alignment;
+  final VoidCallback onCycleLayout;
 
-  static const double width = 132;
-  static const double peerHeight = 168;
-  static const double selfSize = 56;
+  static const double sideWidth = 132;
+  static const double sidePeerHeight = 168;
+  static const double stripHeight = 88;
+  static const double selfSize = 48;
+
+  /// Space reserved when overlaying a side panel on narrow content.
+  static double sideReserveWidth(ReactionAvLayout layout) =>
+      layout == ReactionAvLayout.side ? sideWidth + 16 : 0;
 
   @override
   Widget build(BuildContext context) {
-    return Align(
-      alignment: alignment,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(8, 4, 12, 8),
-        child: SizedBox(
-          width: width,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Stack(
-                clipBehavior: Clip.none,
+    return layout == ReactionAvLayout.strip ? _strip() : _side();
+  }
+
+  Widget _strip() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 12, 8),
+      child: SizedBox(
+        height: stripHeight,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              child: Stack(
                 children: [
-                  _peerTile(),
+                  Positioned.fill(child: _peerFrame(borderRadius: 14)),
                   Positioned(
-                    right: 6,
-                    bottom: -selfSize * 0.35,
-                    child: _selfTile(),
+                    top: 4,
+                    right: 4,
+                    child: _chip(
+                      icon: layoutPref.icon,
+                      on: true,
+                      onTap: onCycleLayout,
+                      tooltip: '${layoutPref.label} (tap to change)',
+                      compact: true,
+                    ),
                   ),
                 ],
               ),
-              const SizedBox(height: selfSize * 0.4 + 8),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  _chip(
-                    icon: av.cameraEnabled ? Icons.videocam : Icons.videocam_off,
-                    on: av.cameraEnabled,
-                    onTap: onToggleCamera,
-                  ),
-                  const SizedBox(width: 6),
-                  _chip(
-                    icon: av.micEnabled ? Icons.mic : Icons.mic_off,
-                    on: av.micEnabled,
-                    onTap: onToggleMic,
-                  ),
-                  if (!av.peerMicEnabled) ...[
-                    const SizedBox(width: 6),
-                    Icon(Icons.mic_off, size: 16, color: BlushTheme.roseDeep),
-                  ],
-                ],
-              ),
-            ],
-          ),
+            ),
+            const SizedBox(width: 10),
+            Center(child: _selfTile()),
+            const SizedBox(width: 8),
+            _controls(vertical: true),
+          ],
         ),
       ),
     );
   }
 
-  Widget _peerTile() {
+  Widget _side() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(8, 4, 12, 8),
+      child: SizedBox(
+        width: sideWidth,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                SizedBox(
+                  width: sideWidth,
+                  height: sidePeerHeight,
+                  child: _peerFrame(borderRadius: 14),
+                ),
+                Positioned(
+                  right: 6,
+                  bottom: -selfSize * 0.35,
+                  child: _selfTile(),
+                ),
+              ],
+            ),
+            const SizedBox(height: selfSize * 0.4 + 8),
+            _controls(vertical: false),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _peerFrame({required double borderRadius}) {
     Widget child;
     if (peerVideo != null && av.peerCameraEnabled) {
       child = peerVideo!;
     } else if (peerJpeg != null && av.peerCameraEnabled) {
       child = Image.memory(peerJpeg!, fit: BoxFit.cover);
     } else if (!av.peerCameraEnabled) {
-      child = _placeholder('Partner\ncamera off');
+      child = _placeholder('Partner camera off');
     } else {
-      child = _placeholder(av.ready || peerVideo != null
-          ? 'Waiting for\npartner…'
-          : 'Connecting…');
+      child = _placeholder(
+        av.ready || peerVideo != null ? 'Waiting for partner…' : 'Connecting…',
+      );
     }
 
     return Container(
-      width: width,
-      height: peerHeight,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(borderRadius),
         border: Border.all(color: Colors.white.withValues(alpha: 0.85), width: 2),
         boxShadow: [
           BoxShadow(
-            color: BlushTheme.charcoal.withValues(alpha: 0.22),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
+            color: BlushTheme.charcoal.withValues(alpha: 0.18),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
           ),
         ],
       ),
@@ -136,7 +231,7 @@ class ReactionPip extends StatelessWidget {
         border: Border.all(color: Colors.white, width: 2),
         boxShadow: [
           BoxShadow(
-            color: BlushTheme.charcoal.withValues(alpha: 0.25),
+            color: BlushTheme.charcoal.withValues(alpha: 0.22),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -147,16 +242,78 @@ class ReactionPip extends StatelessWidget {
     );
   }
 
+  Widget _controls({required bool vertical}) {
+    final chips = <Widget>[
+      _chip(
+        icon: av.cameraEnabled ? Icons.videocam : Icons.videocam_off,
+        on: av.cameraEnabled,
+        onTap: onToggleCamera,
+        tooltip: av.cameraEnabled ? 'Camera on' : 'Camera off',
+        compact: vertical,
+      ),
+      _chip(
+        icon: av.micEnabled ? Icons.mic : Icons.mic_off,
+        on: av.micEnabled,
+        onTap: onToggleMic,
+        tooltip: av.micEnabled ? 'Mic on' : 'Mic off',
+        compact: vertical,
+      ),
+    ];
+
+    if (!vertical) {
+      chips.add(
+        _chip(
+          icon: layoutPref.icon,
+          on: true,
+          onTap: onCycleLayout,
+          tooltip: '${layoutPref.label} (tap to change)',
+        ),
+      );
+    }
+
+    if (!av.peerMicEnabled) {
+      chips.add(Icon(Icons.mic_off, size: 16, color: BlushTheme.roseDeep));
+    }
+
+    if (vertical) {
+      return Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (var i = 0; i < chips.length; i++) ...[
+            if (i > 0) const SizedBox(height: 4),
+            chips[i],
+          ],
+        ],
+      );
+    }
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.end,
+      children: [
+        for (var i = 0; i < chips.length; i++) ...[
+          if (i > 0) const SizedBox(width: 6),
+          chips[i],
+        ],
+      ],
+    );
+  }
+
   Widget _placeholder(String text, {bool compact = false}) {
     return ColoredBox(
       color: BlushTheme.creamDark,
       child: Center(
-        child: Text(
-          text,
-          textAlign: TextAlign.center,
-          style: BlushTheme.body(
-            compact ? 9 : 11,
-            color: BlushTheme.inkMuted,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 6),
+          child: Text(
+            text,
+            textAlign: TextAlign.center,
+            maxLines: compact ? 1 : 2,
+            overflow: TextOverflow.ellipsis,
+            style: BlushTheme.body(
+              compact ? 9 : 11,
+              color: BlushTheme.inkMuted,
+            ),
           ),
         ),
       ),
@@ -167,8 +324,12 @@ class ReactionPip extends StatelessWidget {
     required IconData icon,
     required bool on,
     required VoidCallback onTap,
+    String? tooltip,
+    bool compact = false,
   }) {
-    return Material(
+    final pad = compact ? 6.0 : 8.0;
+    final size = compact ? 14.0 : 16.0;
+    final chip = Material(
       color: on
           ? BlushTheme.charcoal.withValues(alpha: 0.55)
           : BlushTheme.roseDeep.withValues(alpha: 0.9),
@@ -177,10 +338,12 @@ class ReactionPip extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(16),
         child: Padding(
-          padding: const EdgeInsets.all(8),
-          child: Icon(icon, color: Colors.white, size: 16),
+          padding: EdgeInsets.all(pad),
+          child: Icon(icon, color: Colors.white, size: size),
         ),
       ),
     );
+    if (tooltip == null) return chip;
+    return Tooltip(message: tooltip, child: chip);
   }
 }

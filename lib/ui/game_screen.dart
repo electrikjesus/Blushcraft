@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../camera/reaction_camera.dart';
 import '../../models/game_state.dart';
@@ -44,6 +45,8 @@ class _GameScreenState extends State<GameScreen> {
   Timer? _frameTimer;
   final _prizeController = TextEditingController();
   DateTime _lastAudioSent = DateTime.fromMillisecondsSinceEpoch(0);
+  ReactionAvLayoutPref _avLayoutPref = ReactionAvLayoutPref.auto;
+  static const _avLayoutPrefKey = 'blushcraft_av_layout';
 
   NearbyGameSession? get _nearby =>
       widget.session is NearbyGameSession
@@ -104,7 +107,31 @@ class _GameScreenState extends State<GameScreen> {
     };
     _av.addListener(_onAvChanged);
     _webrtc?.addListener(_onWebRtcChanged);
+    unawaited(_loadAvLayoutPref());
     _onGame();
+  }
+
+  Future<void> _loadAvLayoutPref() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
+    setState(() {
+      _avLayoutPref =
+          ReactionAvLayoutPref.fromStorage(prefs.getString(_avLayoutPrefKey));
+    });
+  }
+
+  Future<void> _cycleAvLayout() async {
+    final next = _avLayoutPref.next;
+    setState(() => _avLayoutPref = next);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_avLayoutPrefKey, next.storageValue);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(next.label),
+        duration: const Duration(milliseconds: 1200),
+      ),
+    );
   }
 
   void _onAvChanged() {
@@ -289,7 +316,7 @@ class _GameScreenState extends State<GameScreen> {
     );
   }
 
-  /// Keeps statement/hand readable while peer video stays visible all round.
+  /// Places reaction cameras without stealing phone content width by default.
   Widget _withReactionPip(GameState state, Widget child) {
     Uint8List? peerBytes;
     if (!_useWebRtcMedia &&
@@ -318,26 +345,52 @@ class _GameScreenState extends State<GameScreen> {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final wide = constraints.maxWidth > 700;
-        final edgePad = wide ? 8.0 : ReactionPip.width + 16;
+        final layout = _avLayoutPref.resolve(width: constraints.maxWidth);
+        final panel = ReactionAvPanel(
+          av: _av,
+          layout: layout,
+          layoutPref: _avLayoutPref,
+          peerJpeg: peerBytes,
+          peerVideo: peerVideo,
+          localVideo: localVideo,
+          onToggleCamera: _toggleCamera,
+          onToggleMic: _toggleMic,
+          onCycleLayout: _cycleAvLayout,
+        );
+
+        if (layout == ReactionAvLayout.strip) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              panel,
+              Expanded(child: child),
+            ],
+          );
+        }
+
+        // Side panel: true split on wide screens, overlay reserve on narrow.
+        final wide = constraints.maxWidth >= 700;
+        if (wide) {
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(child: child),
+              panel,
+            ],
+          );
+        }
 
         return Stack(
           children: [
             Positioned.fill(
               child: Padding(
-                padding: EdgeInsets.only(right: edgePad),
+                padding: EdgeInsets.only(
+                  right: ReactionAvPanel.sideReserveWidth(layout),
+                ),
                 child: child,
               ),
             ),
-            ReactionPip(
-              av: _av,
-              peerJpeg: peerBytes,
-              peerVideo: peerVideo,
-              localVideo: localVideo,
-              onToggleCamera: _toggleCamera,
-              onToggleMic: _toggleMic,
-              alignment: Alignment.topRight,
-            ),
+            Align(alignment: Alignment.topRight, child: panel),
           ],
         );
       },
@@ -456,9 +509,14 @@ class _GameScreenState extends State<GameScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: statement,
             ),
-            const Spacer(),
-            hand,
             const SizedBox(height: 12),
+            Expanded(
+              child: Align(
+                alignment: Alignment.bottomCenter,
+                child: hand,
+              ),
+            ),
+            const SizedBox(height: 8),
           ],
         );
       },
