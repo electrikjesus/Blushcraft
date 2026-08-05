@@ -1,6 +1,6 @@
 # Online play architecture: WebRTC + QR (v1)
 
-Status: **design** (not implemented yet). Local Nearby play remains the supported path.
+Status: **v1 in app** (QR signaling + data channel + WebRTC AV). Nearby play remains fully supported. Cloud signaling / TURN still later.
 
 ## Goal
 

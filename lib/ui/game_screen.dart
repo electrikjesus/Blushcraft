@@ -3,11 +3,14 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_webrtc/flutter_webrtc.dart';
 
 import '../../camera/reaction_camera.dart';
 import '../../models/game_state.dart';
 import '../../networking/game_message.dart';
+import '../../networking/game_transport.dart';
 import '../../networking/nearby_game_session.dart';
+import '../../networking/webrtc/webrtc_qr_session.dart';
 import '../../share/share_service.dart';
 import '../../state/game_controller.dart';
 import 'theme.dart';
@@ -26,7 +29,7 @@ class GameScreen extends StatefulWidget {
   });
 
   final GameController controller;
-  final NearbyGameSession? session;
+  final GameSession? session;
   final VoidCallback onLeave;
 
   @override
@@ -41,6 +44,18 @@ class _GameScreenState extends State<GameScreen> {
   Timer? _frameTimer;
   final _prizeController = TextEditingController();
   DateTime _lastAudioSent = DateTime.fromMillisecondsSinceEpoch(0);
+
+  NearbyGameSession? get _nearby =>
+      widget.session is NearbyGameSession
+          ? widget.session as NearbyGameSession
+          : null;
+
+  WebRtcQrSession? get _webrtc =>
+      widget.session is WebRtcQrSession
+          ? widget.session as WebRtcQrSession
+          : null;
+
+  bool get _useWebRtcMedia => _webrtc != null;
 
   static const _prizePresets = [
     'Foot massage',
@@ -72,11 +87,11 @@ class _GameScreenState extends State<GameScreen> {
       }
     };
     _av.onLocalAudioChunk = (bytes) {
-      final session = widget.session;
+      if (_useWebRtcMedia) return; // audio via WebRTC tracks
+      final session = _nearby;
       if (session == null || !session.isConnected) return;
       if (!_av.micEnabled) return;
       final now = DateTime.now();
-      // Limit payload rate over Nearby (~4 chunks/sec max).
       if (now.difference(_lastAudioSent).inMilliseconds < 220) return;
       if (bytes.length > 12 * 1024) return;
       _lastAudioSent = now;
@@ -87,21 +102,40 @@ class _GameScreenState extends State<GameScreen> {
         ),
       );
     };
-    _av.addListener(() {
-      if (mounted) setState(() {});
-    });
+    _av.addListener(_onAvChanged);
+    _webrtc?.addListener(_onWebRtcChanged);
     _onGame();
+  }
+
+  void _onAvChanged() {
+    if (mounted) setState(() {});
+  }
+
+  void _onWebRtcChanged() {
+    if (mounted) setState(() {});
   }
 
   void _onGame() {
     final phase = widget.controller.state?.phase;
     if (_shouldStreamAv(phase)) {
-      _ensureAv();
+      if (_useWebRtcMedia) {
+        unawaited(_syncWebRtcTracks());
+        unawaited(_publishPrivacy());
+      } else {
+        _ensureAv();
+      }
     } else {
       _stopFrames();
       unawaited(_av.stopMic());
     }
     if (mounted) setState(() {});
+  }
+
+  Future<void> _syncWebRtcTracks() async {
+    await _webrtc?.setTrackEnabled(
+      video: _av.cameraEnabled,
+      audio: _av.micEnabled,
+    );
   }
 
   bool _shouldStreamAv(GamePhase? phase) {
@@ -143,8 +177,8 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   void _startFrames() {
+    if (_useWebRtcMedia) return;
     _frameTimer?.cancel();
-    // Local preview works without a session; peer frames need Nearby.
     _frameTimer = Timer.periodic(const Duration(milliseconds: 900), (_) async {
       if (!_av.cameraEnabled) return;
       final b64 = await _av.captureBase64Jpeg();
@@ -167,14 +201,22 @@ class _GameScreenState extends State<GameScreen> {
 
   Future<void> _toggleCamera() async {
     await _av.setCameraEnabled(!_av.cameraEnabled);
+    await _webrtc?.setTrackEnabled(
+      video: _av.cameraEnabled,
+      audio: _av.micEnabled,
+    );
     await _publishPrivacy();
-    if (_av.cameraEnabled) {
+    if (_av.cameraEnabled && !_useWebRtcMedia) {
       _startFrames();
     }
   }
 
   Future<void> _toggleMic() async {
     await _av.setMicEnabled(!_av.micEnabled);
+    await _webrtc?.setTrackEnabled(
+      video: _av.cameraEnabled,
+      audio: _av.micEnabled,
+    );
     await _publishPrivacy();
   }
 
@@ -186,6 +228,8 @@ class _GameScreenState extends State<GameScreen> {
     widget.controller.onPeerAudio = null;
     widget.controller.onAvPrivacy = null;
     _av.onLocalAudioChunk = null;
+    _av.removeListener(_onAvChanged);
+    _webrtc?.removeListener(_onWebRtcChanged);
     _av.dispose();
     _prizeController.dispose();
     super.dispose();
@@ -248,16 +292,33 @@ class _GameScreenState extends State<GameScreen> {
   /// Keeps statement/hand readable while peer video stays visible all round.
   Widget _withReactionPip(GameState state, Widget child) {
     Uint8List? peerBytes;
-    if (_peerFrameBase64 != null && _av.peerCameraEnabled) {
+    if (!_useWebRtcMedia &&
+        _peerFrameBase64 != null &&
+        _av.peerCameraEnabled) {
       try {
         peerBytes = base64Decode(_peerFrameBase64!);
       } catch (_) {}
     }
 
+    final rtc = _webrtc;
+    Widget? peerVideo;
+    Widget? localVideo;
+    if (rtc != null) {
+      peerVideo = RTCVideoView(
+        rtc.remoteRenderer,
+        objectFit: RTCVideoViewObjectFit.RTCVideoViewObjectFitCover,
+        mirror: true,
+      );
+      localVideo = RTCVideoView(
+        rtc.localRenderer,
+        objectFit: RTCVideoViewObjectFit.RTCVideoViewObjectFitCover,
+        mirror: true,
+      );
+    }
+
     return LayoutBuilder(
       builder: (context, constraints) {
         final wide = constraints.maxWidth > 700;
-        // Reserve a clear lane so the pip never covers statement or hand.
         final edgePad = wide ? 8.0 : ReactionPip.width + 16;
 
         return Stack(
@@ -271,6 +332,8 @@ class _GameScreenState extends State<GameScreen> {
             ReactionPip(
               av: _av,
               peerJpeg: peerBytes,
+              peerVideo: peerVideo,
+              localVideo: localVideo,
               onToggleCamera: _toggleCamera,
               onToggleMic: _toggleMic,
               alignment: Alignment.topRight,
@@ -463,14 +526,14 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   Widget _disconnectedPhase(GameState state) {
-    final session = widget.session;
-    final discovered = session?.discovered.entries.toList() ?? [];
+    final nearby = _nearby;
+    final discovered = nearby?.discovered.entries.toList() ?? [];
     final isHost = widget.controller.isHost;
 
     return ListenableBuilder(
-      listenable: session ?? widget.controller,
+      listenable: widget.session ?? widget.controller,
       builder: (context, _) {
-        final hosts = session?.discovered.entries.toList() ?? discovered;
+        final hosts = nearby?.discovered.entries.toList() ?? discovered;
         return ListView(
           padding: const EdgeInsets.all(24),
           children: [
@@ -490,12 +553,12 @@ class _GameScreenState extends State<GameScreen> {
             ),
             const SizedBox(height: 12),
             Text(
-              session?.status ?? '',
+              widget.session?.status ?? '',
               style: BlushTheme.body(13, color: BlushTheme.inkMuted),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
-            if (isHost) ...[
+            if (nearby != null && isHost) ...[
               Text(
                 'Keep this screen open. Your partner should Join again and tap Connect.',
                 style: BlushTheme.body(14),
@@ -503,10 +566,10 @@ class _GameScreenState extends State<GameScreen> {
               ),
               const SizedBox(height: 16),
               OutlinedButton(
-                onPressed: () => session?.ensureHostingForReconnect(),
+                onPressed: () => nearby.ensureHostingForReconnect(),
                 child: const Text('Re-advertise as host'),
               ),
-            ] else ...[
+            ] else if (nearby != null) ...[
               Text(
                 'Find the host again, then Connect to resume.',
                 style: BlushTheme.body(14),
@@ -514,7 +577,7 @@ class _GameScreenState extends State<GameScreen> {
               ),
               const SizedBox(height: 12),
               OutlinedButton(
-                onPressed: () => session?.beginReconnectDiscovery(),
+                onPressed: () => nearby.beginReconnectDiscovery(),
                 child: const Text('Search again'),
               ),
               const SizedBox(height: 16),
@@ -523,10 +586,16 @@ class _GameScreenState extends State<GameScreen> {
                   contentPadding: EdgeInsets.zero,
                   title: Text(e.value),
                   trailing: ElevatedButton(
-                    onPressed: () => session?.connectTo(e.key),
+                    onPressed: () => nearby.connectTo(e.key),
                     child: const Text('Connect'),
                   ),
                 ),
+              ),
+            ] else ...[
+              Text(
+                'For online WebRTC games, leave and create a new QR invite to reconnect.',
+                style: BlushTheme.body(14),
+                textAlign: TextAlign.center,
               ),
             ],
             const SizedBox(height: 28),

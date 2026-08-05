@@ -36,6 +36,9 @@ dependencies:
   nearby_connections: ^4.3.0
   record: ^7.1.1
   audioplayers: ^6.8.1
+  flutter_webrtc: ^1.6.0
+  qr_flutter: ^4.1.0
+  mobile_scanner: ^7.4.0
 
 dev_dependencies:
   flutter_test:

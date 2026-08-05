@@ -5,17 +5,10 @@ import 'package:nearby_connections/nearby_connections.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import 'game_message.dart';
-
-typedef MessageHandler = Future<void> Function(GameMessage message);
-typedef ConnectionHandler = void Function({
-  required bool connected,
-  String? endpointId,
-  String? endpointName,
-  bool isReconnect,
-});
+import 'game_transport.dart';
 
 /// Nearby Connections P2P session for local two-player sync.
-class NearbyGameSession extends ChangeNotifier {
+class NearbyGameSession extends GameSession {
   NearbyGameSession({
     required this.userName,
     required this.onMessage,
@@ -36,9 +29,12 @@ class NearbyGameSession extends ChangeNotifier {
   bool discovering = false;
   bool reconnecting = false;
   bool _hadConnection = false;
+
+  @override
   String? status;
   final Map<String, String> discovered = {};
 
+  @override
   bool get isConnected => connectedEndpointId != null;
 
   Future<bool> ensurePermissions() async {
@@ -246,6 +242,7 @@ class NearbyGameSession extends ChangeNotifier {
     );
   }
 
+  @override
   Future<void> send(GameMessage message) async {
     final id = connectedEndpointId;
     if (id == null) return;
@@ -275,6 +272,7 @@ class NearbyGameSession extends ChangeNotifier {
     discovering = false;
   }
 
+  @override
   Future<void> stopAll() async {
     reconnecting = false;
     _hadConnection = false;

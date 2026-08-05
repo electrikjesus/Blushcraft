@@ -4,13 +4,17 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'data/card_repository.dart';
 import 'models/game_state.dart';
 import 'networking/game_message.dart';
+import 'networking/game_transport.dart';
 import 'networking/nearby_game_session.dart';
+import 'networking/webrtc/webrtc_qr_session.dart';
 import 'state/game_controller.dart';
 import 'state/stats_store.dart';
 import 'ui/game_screen.dart';
 import 'ui/home_screen.dart';
 import 'ui/how_to_play_screen.dart';
 import 'ui/lobby_screen.dart';
+import 'ui/online_host_qr_screen.dart';
+import 'ui/online_join_qr_screen.dart';
 import 'ui/stats_screen.dart';
 import 'ui/theme.dart';
 
@@ -28,7 +32,7 @@ class BlushcraftApp extends StatelessWidget {
   }
 }
 
-enum AppScreen { home, lobby, game }
+enum AppScreen { home, onlineHost, onlineJoin, lobby, game }
 
 class AppRoot extends StatefulWidget {
   const AppRoot({super.key});
@@ -41,7 +45,7 @@ class _AppRootState extends State<AppRoot> {
   CardRepository? _cards;
   StatsStore? _stats;
   GameController? _controller;
-  NearbyGameSession? _session;
+  GameSession? _session;
   AppScreen _screen = AppScreen.home;
   String _displayName = 'Player';
   double _riskayLevel = 0.5;
@@ -88,6 +92,39 @@ class _AppRootState extends State<AppRoot> {
     setState(() {});
   }
 
+  Future<void> _handleGameMessage(
+    GameController controller,
+    GameMessage msg, {
+    bool promoteGuestToGame = false,
+  }) async {
+    if (msg is PeerFrameMessage) {
+      controller.onPeerFrame?.call(msg.playerId, msg.base64Jpeg);
+      return;
+    }
+    if (msg is PeerAudioMessage) {
+      controller.onPeerAudio?.call(msg.playerId, msg.base64Aac);
+      return;
+    }
+    if (msg is AvPrivacyMessage) {
+      controller.onAvPrivacy?.call(
+        msg.playerId,
+        cameraEnabled: msg.cameraEnabled,
+        micEnabled: msg.micEnabled,
+      );
+      return;
+    }
+    await controller.onMessage(msg);
+    if (!promoteGuestToGame) return;
+    final phase = controller.state?.phase;
+    if (phase != null &&
+        phase != GamePhase.lobby &&
+        phase != GamePhase.disconnected &&
+        mounted &&
+        _screen == AppScreen.lobby) {
+      setState(() => _screen = AppScreen.game);
+    }
+  }
+
   Future<void> _leaveToHome() async {
     await _session?.stopAll();
     _session?.dispose();
@@ -114,26 +151,13 @@ class _AppRootState extends State<AppRoot> {
     late final NearbyGameSession session;
     session = NearbyGameSession(
       userName: name,
-      onMessage: (msg) async {
-        if (msg is PeerFrameMessage) {
-          controller.onPeerFrame?.call(msg.playerId, msg.base64Jpeg);
-          return;
-        }
-        if (msg is PeerAudioMessage) {
-          controller.onPeerAudio?.call(msg.playerId, msg.base64Aac);
-          return;
-        }
-        if (msg is AvPrivacyMessage) {
-          controller.onAvPrivacy?.call(
-            msg.playerId,
-            cameraEnabled: msg.cameraEnabled,
-            micEnabled: msg.micEnabled,
-          );
-          return;
-        }
-        await controller.onMessage(msg);
-      },
-      onConnection: ({required connected, endpointId, endpointName, isReconnect = false}) async {
+      onMessage: (msg) => _handleGameMessage(controller, msg),
+      onConnection: ({
+        required connected,
+        endpointId,
+        endpointName,
+        isReconnect = false,
+      }) async {
         if (!connected) {
           controller.markDisconnected();
           await session.ensureHostingForReconnect();
@@ -173,34 +197,17 @@ class _AppRootState extends State<AppRoot> {
     late final NearbyGameSession session;
     session = NearbyGameSession(
       userName: name,
-      onMessage: (msg) async {
-        if (msg is PeerFrameMessage) {
-          controller.onPeerFrame?.call(msg.playerId, msg.base64Jpeg);
-          return;
-        }
-        if (msg is PeerAudioMessage) {
-          controller.onPeerAudio?.call(msg.playerId, msg.base64Aac);
-          return;
-        }
-        if (msg is AvPrivacyMessage) {
-          controller.onAvPrivacy?.call(
-            msg.playerId,
-            cameraEnabled: msg.cameraEnabled,
-            micEnabled: msg.micEnabled,
-          );
-          return;
-        }
-        await controller.onMessage(msg);
-        final phase = controller.state?.phase;
-        if (phase != null &&
-            phase != GamePhase.lobby &&
-            phase != GamePhase.disconnected &&
-            mounted &&
-            _screen == AppScreen.lobby) {
-          setState(() => _screen = AppScreen.game);
-        }
-      },
-      onConnection: ({required connected, endpointId, endpointName, isReconnect = false}) async {
+      onMessage: (msg) => _handleGameMessage(
+        controller,
+        msg,
+        promoteGuestToGame: true,
+      ),
+      onConnection: ({
+        required connected,
+        endpointId,
+        endpointName,
+        isReconnect = false,
+      }) async {
         if (!connected) {
           controller.markDisconnected();
           await session.beginReconnectDiscovery();
@@ -210,9 +217,6 @@ class _AppRootState extends State<AppRoot> {
         await session.send(
           HelloMessage(playerId: controller.localPlayerId, name: name),
         );
-        if (isReconnect) {
-          // Host will broadcast restored state after Hello.
-        }
         if (mounted) setState(() {});
       },
     );
@@ -225,6 +229,105 @@ class _AppRootState extends State<AppRoot> {
       _controller = controller;
       _session = session;
       _screen = AppScreen.lobby;
+    });
+  }
+
+  Future<void> _startHostOnline(String name) async {
+    await _persistName(name);
+    final stats = _stats!..resetGameResultGate();
+
+    final controller = GameController(
+      cards: _cards!,
+      stats: stats,
+      displayName: name,
+      isHost: true,
+      riskayLevel: _riskayLevel,
+    );
+
+    final session = WebRtcQrSession(
+      userName: name,
+      onMessage: (msg) => _handleGameMessage(controller, msg),
+      onConnection: ({
+        required connected,
+        endpointId,
+        endpointName,
+        isReconnect = false,
+      }) {
+        if (!connected) {
+          controller.markDisconnected();
+          if (mounted) setState(() {});
+          return;
+        }
+        if (isReconnect) {
+          controller.resumeAfterReconnect();
+        }
+        if (mounted && _screen == AppScreen.onlineHost) {
+          setState(() => _screen = AppScreen.lobby);
+        } else if (mounted) {
+          setState(() {});
+        }
+      },
+    );
+
+    controller.sendMessage = session.send;
+    await controller.initLobby();
+
+    setState(() {
+      _controller = controller;
+      _session = session;
+      _screen = AppScreen.onlineHost;
+    });
+  }
+
+  Future<void> _startJoinOnline(String name) async {
+    await _persistName(name);
+    final stats = _stats!..resetGameResultGate();
+
+    final controller = GameController(
+      cards: _cards!,
+      stats: stats,
+      displayName: name,
+      isHost: false,
+      riskayLevel: _riskayLevel,
+    );
+
+    late final WebRtcQrSession session;
+    session = WebRtcQrSession(
+      userName: name,
+      onMessage: (msg) => _handleGameMessage(
+        controller,
+        msg,
+        promoteGuestToGame: true,
+      ),
+      onConnection: ({
+        required connected,
+        endpointId,
+        endpointName,
+        isReconnect = false,
+      }) async {
+        if (!connected) {
+          controller.markDisconnected();
+          if (mounted) setState(() {});
+          return;
+        }
+        await session.send(
+          HelloMessage(playerId: controller.localPlayerId, name: name),
+        );
+        if (mounted && _screen == AppScreen.onlineJoin) {
+          setState(() => _screen = AppScreen.lobby);
+        } else if (mounted) {
+          setState(() {});
+        }
+      },
+    );
+
+    controller.sendMessage = session.send;
+    await controller.initLobby();
+
+    setState(() {
+      _controller = controller;
+      _session = session;
+      _screen = AppScreen.onlineJoin;
     });
   }
 
@@ -306,9 +409,31 @@ class _AppRootState extends State<AppRoot> {
           onRiskayChanged: _persistRiskay,
           onHost: _startHost,
           onJoin: _startJoin,
+          onHostOnline: _startHostOnline,
+          onJoinOnline: _startJoinOnline,
           onDryRun: _startDryRun,
           onStats: _openStats,
           onHowTo: _openHowTo,
+        );
+      case AppScreen.onlineHost:
+        return OnlineHostQrScreen(
+          session: _session as WebRtcQrSession,
+          onCancel: _leaveToHome,
+          onConnected: () {
+            if (mounted && _screen == AppScreen.onlineHost) {
+              setState(() => _screen = AppScreen.lobby);
+            }
+          },
+        );
+      case AppScreen.onlineJoin:
+        return OnlineJoinQrScreen(
+          session: _session as WebRtcQrSession,
+          onCancel: _leaveToHome,
+          onConnected: () {
+            if (mounted && _screen == AppScreen.onlineJoin) {
+              setState(() => _screen = AppScreen.lobby);
+            }
+          },
         );
       case AppScreen.lobby:
         return LobbyScreen(

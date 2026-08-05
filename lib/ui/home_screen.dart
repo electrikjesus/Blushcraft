@@ -8,6 +8,8 @@ class HomeScreen extends StatefulWidget {
     super.key,
     required this.onHost,
     required this.onJoin,
+    required this.onHostOnline,
+    required this.onJoinOnline,
     required this.onDryRun,
     required this.onStats,
     required this.onHowTo,
@@ -18,6 +20,8 @@ class HomeScreen extends StatefulWidget {
 
   final ValueChanged<String> onHost;
   final ValueChanged<String> onJoin;
+  final ValueChanged<String> onHostOnline;
+  final ValueChanged<String> onJoinOnline;
   final ValueChanged<String> onDryRun;
   final VoidCallback onStats;
   final VoidCallback onHowTo;
@@ -133,14 +137,37 @@ class _HomeScreenState extends State<HomeScreen>
                         onChanged: widget.onRiskayChanged,
                       ),
                       const SizedBox(height: 24),
+                      Text(
+                        'Nearby (same room)',
+                        style: BlushTheme.body(13, color: BlushTheme.inkMuted),
+                      ),
+                      const SizedBox(height: 8),
                       ElevatedButton(
                         onPressed: () => widget.onHost(_trimmed),
-                        child: const Text('Host a game'),
+                        child: const Text('Host nearby'),
                       ),
                       const SizedBox(height: 12),
                       OutlinedButton(
                         onPressed: () => widget.onJoin(_trimmed),
-                        child: const Text('Join a game'),
+                        child: const Text('Join nearby'),
+                      ),
+                      const SizedBox(height: 20),
+                      Text(
+                        'Online (QR / internet)',
+                        style: BlushTheme.body(13, color: BlushTheme.inkMuted),
+                      ),
+                      const SizedBox(height: 8),
+                      ElevatedButton(
+                        onPressed: () => widget.onHostOnline(_trimmed),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: BlushTheme.roseDeep,
+                        ),
+                        child: const Text('Host online'),
+                      ),
+                      const SizedBox(height: 12),
+                      OutlinedButton(
+                        onPressed: () => widget.onJoinOnline(_trimmed),
+                        child: const Text('Join online'),
                       ),
                       const SizedBox(height: 12),
                       TextButton(

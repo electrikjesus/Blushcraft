@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../networking/game_transport.dart';
 import '../../networking/nearby_game_session.dart';
 import '../../state/game_controller.dart';
 import 'theme.dart';
@@ -15,14 +16,17 @@ class LobbyScreen extends StatelessWidget {
   });
 
   final GameController controller;
-  final NearbyGameSession? session;
+  final GameSession? session;
   final VoidCallback onLeave;
   final VoidCallback onStart;
+
+  NearbyGameSession? get _nearby =>
+      session is NearbyGameSession ? session as NearbyGameSession : null;
 
   @override
   Widget build(BuildContext context) {
     final state = controller.state;
-    final session = this.session;
+    final nearby = _nearby;
 
     return BlushBackdrop(
       child: Scaffold(
@@ -42,8 +46,11 @@ class LobbyScreen extends StatelessWidget {
           builder: (context, _) {
             final s = controller.state ?? state;
             final status = session?.status ?? s?.message ?? '';
-            final discovered = session?.discovered.entries.toList() ?? [];
+            final discovered = nearby?.discovered.entries.toList() ?? [];
             final canEditRiskay = controller.isHost || controller.dryRun;
+            final partnerReady = controller.dryRun ||
+                (s != null && s.guest.id != 'pending-guest') ||
+                (session != null && session!.isConnected);
 
             return ListView(
               padding: const EdgeInsets.all(24),
@@ -82,7 +89,7 @@ class LobbyScreen extends StatelessWidget {
                       style: BlushTheme.body(12, color: BlushTheme.inkMuted),
                     ),
                   ),
-                if (session != null &&
+                if (nearby != null &&
                     !controller.isHost &&
                     discovered.isNotEmpty) ...[
                   const SizedBox(height: 28),
@@ -93,7 +100,7 @@ class LobbyScreen extends StatelessWidget {
                       contentPadding: EdgeInsets.zero,
                       title: Text(e.value),
                       trailing: ElevatedButton(
-                        onPressed: () => session.connectTo(e.key),
+                        onPressed: () => nearby.connectTo(e.key),
                         child: const Text('Connect'),
                       ),
                     ),
@@ -103,11 +110,7 @@ class LobbyScreen extends StatelessWidget {
                 if (controller.isHost)
                   ElevatedButton(
                     onPressed: () {
-                      final ready = controller.dryRun ||
-                          (s != null &&
-                              s.guest.id != 'pending-guest' &&
-                              (session == null || session.isConnected));
-                      if (!ready) {
+                      if (!partnerReady) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
                             content: Text('Wait for your partner to join.'),

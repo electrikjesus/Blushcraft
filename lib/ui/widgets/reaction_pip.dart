@@ -12,6 +12,8 @@ class ReactionPip extends StatelessWidget {
     super.key,
     required this.av,
     this.peerJpeg,
+    this.peerVideo,
+    this.localVideo,
     required this.onToggleCamera,
     required this.onToggleMic,
     this.alignment = Alignment.topRight,
@@ -19,6 +21,8 @@ class ReactionPip extends StatelessWidget {
 
   final ReactionAvController av;
   final Uint8List? peerJpeg;
+  final Widget? peerVideo;
+  final Widget? localVideo;
   final VoidCallback onToggleCamera;
   final VoidCallback onToggleMic;
   final Alignment alignment;
@@ -80,12 +84,16 @@ class ReactionPip extends StatelessWidget {
 
   Widget _peerTile() {
     Widget child;
-    if (peerJpeg != null && av.peerCameraEnabled) {
+    if (peerVideo != null && av.peerCameraEnabled) {
+      child = peerVideo!;
+    } else if (peerJpeg != null && av.peerCameraEnabled) {
       child = Image.memory(peerJpeg!, fit: BoxFit.cover);
     } else if (!av.peerCameraEnabled) {
       child = _placeholder('Partner\ncamera off');
     } else {
-      child = _placeholder(av.ready ? 'Waiting for\npartner…' : 'Connecting…');
+      child = _placeholder(av.ready || peerVideo != null
+          ? 'Waiting for\npartner…'
+          : 'Connecting…');
     }
 
     return Container(
@@ -109,7 +117,9 @@ class ReactionPip extends StatelessWidget {
 
   Widget _selfTile() {
     Widget child;
-    if (av.showPreview && av.controller != null) {
+    if (localVideo != null && av.cameraEnabled) {
+      child = localVideo!;
+    } else if (av.showPreview && av.controller != null) {
       child = CameraPreview(av.controller!);
     } else {
       child = _placeholder(
