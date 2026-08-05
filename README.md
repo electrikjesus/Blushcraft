@@ -97,7 +97,7 @@ Statements with multiple blanks fill the first blank with the chosen Choice and 
 
 The host can adjust this on the home screen and in the lobby before starting.
 
-## Build a universal Android APK
+## Build Android APKs
 
 Versioning is derived from git automatically:
 
@@ -107,17 +107,20 @@ Versioning is derived from git automatically:
 ```bash
 chmod +x tool/build_apk.sh tool/git_version.sh
 ./tool/build_apk.sh
-# → build/app/outputs/flutter-apk/app-release.apk
+# → build/app/outputs/flutter-apk/app-release.apk              (universal)
+# → build/app/outputs/flutter-apk/app-arm64-v8a-release.apk    (phones)
+# → build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk
+# → build/app/outputs/flutter-apk/app-x86_64-release.apk
 
 # Inspect the computed version:
 ./tool/git_version.sh
 ```
 
-Fat APK includes **armeabi-v7a**, **arm64-v8a**, and **x86_64**. Do not use `--split-per-abi` if you want one installable for devices and x86_64 emulators.
+Prefer the **arm64-v8a** split on modern phones (~1/3 the download of the fat APK). Use the universal `app-release.apk` when you need one file that covers all ABIs.
 
 ### Signed releases (GitHub Actions)
 
-Pushing a `v*` tag builds signed `app-release.apk` + `app-debug.apk` and publishes a GitHub Release (same secret names as BumpDesk). See [docs/distribution.md](docs/distribution.md) and `keystore.properties.example`.
+Pushing a `v*` tag builds signed universal + per-ABI APKs plus `app-debug.apk` and publishes a GitHub Release (same secret names as BumpDesk). See [docs/distribution.md](docs/distribution.md) and `keystore.properties.example`.
 
 Local signed build: copy `keystore.properties.example` → `keystore.properties`, generate `keystore/blushcraft-release.jks`, then run `./tool/build_apk.sh`.
 

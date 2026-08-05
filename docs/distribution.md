@@ -5,7 +5,7 @@ Blushcraft ships APKs from GitHub when you push a `v*` tag (see `.github/workflo
 ## GitHub Releases (current setup)
 
 - Tag format: `v0.2.0` (must match `v*` for the workflow).
-- Artifacts: `app-debug.apk` and signed `app-release.apk`.
+- Artifacts: signed `app-release.apk` (universal), per-ABI splits (`app-arm64-v8a-release.apk`, `app-armeabi-v7a-release.apk`, `app-x86_64-release.apk`), and `app-debug.apk`.
 - Versioning: `versionName` from the tag; `versionCode` from `git rev-list --count HEAD` (see `tool/git_version.sh`).
 - Release notes are generated from git history via `.github/scripts/generate-release-notes.sh`.
 
@@ -60,7 +60,7 @@ Local signed builds: copy `keystore.properties.example` → `keystore.properties
 | Source | GitHub |
 | Repo | `electrikjesus/Blushcraft` |
 | Release filter | `v*` tags |
-| APK filter | `app-release.apk` (or `app-debug.apk` for debug builds) |
+| APK filter | `app-arm64-v8a-release.apk` on phones (or `app-release.apk` universal / `app-debug.apk` for debug) |
 
 Share the Obtainium import link or these values in release notes so testers can one-tap subscribe.
 

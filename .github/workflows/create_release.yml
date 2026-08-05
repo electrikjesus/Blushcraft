@@ -33,7 +33,7 @@ jobs:
         SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
       run: bash .github/scripts/decode-signing-keystore.sh android/app/release.keystore
 
-    - name: Build Release APK
+    - name: Build Release APKs (universal + per-ABI)
       env:
         RELEASE_STORE_FILE: app/release.keystore
         RELEASE_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
@@ -50,8 +50,17 @@ jobs:
           --build-name="${BLUSH_BUILD_NAME}" \
           --build-number="${BLUSH_BUILD_NUMBER}"
 
-    - name: Verify release APK signature
-      run: jarsigner -verify -verbose -certs build/app/outputs/flutter-apk/app-release.apk
+    - name: Verify release APK signatures
+      run: |
+        for apk in \
+          build/app/outputs/flutter-apk/app-release.apk \
+          build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk \
+          build/app/outputs/flutter-apk/app-arm64-v8a-release.apk \
+          build/app/outputs/flutter-apk/app-x86_64-release.apk
+        do
+          echo "Verifying $apk"
+          jarsigner -verify -verbose -certs "$apk" >/dev/null
+        done
 
     - name: Generate release notes
       run: bash .github/scripts/generate-release-notes.sh "${{ github.ref_name }}" > release-notes.md
@@ -62,6 +71,9 @@ jobs:
         files: |
           build/app/outputs/flutter-apk/app-debug.apk
           build/app/outputs/flutter-apk/app-release.apk
+          build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk
+          build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
+          build/app/outputs/flutter-apk/app-x86_64-release.apk
         body_path: release-notes.md
         generate_release_notes: false
         draft: false

@@ -30,18 +30,9 @@ android {
         targetSdk = 37
         versionCode = flutter.versionCode
         versionName = flutter.versionName
-        // Universal APK ABIs supported by current Flutter engine.
-        // (32-bit x86 is no longer shipped by Flutter; use x86_64 emulators.)
-        ndk {
-            abiFilters += listOf("armeabi-v7a", "arm64-v8a", "x86_64")
-        }
-    }
-
-    // One fat APK (not split-per-abi).
-    splits {
-        abi {
-            isEnable = false
-        }
+        // Do not set ndk.abiFilters here. Flutter sets them for fat APKs and
+        // enables ABI splits for `flutter build apk --split-per-abi`. Hardcoding
+        // filters conflicts with per-ABI builds.
     }
 
     signingConfigs {

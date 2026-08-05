@@ -40,16 +40,30 @@ if [ -z "$CHANGELOG" ]; then
   CHANGELOG="- No commits in the last 30 days."
 fi
 
-RELEASE_APK="build/app/outputs/flutter-apk/app-release.apk"
-DEBUG_APK="build/app/outputs/flutter-apk/app-debug.apk"
-RELEASE_APK_SIZE=""
-DEBUG_APK_SIZE=""
-if [ -f "$RELEASE_APK" ]; then
-  RELEASE_APK_SIZE="$(du -h "$RELEASE_APK" | cut -f1)"
-fi
-if [ -f "$DEBUG_APK" ]; then
-  DEBUG_APK_SIZE="$(du -h "$DEBUG_APK" | cut -f1)"
-fi
+apk_size() {
+  local path="$1"
+  if [ -f "$path" ]; then
+    du -h "$path" | cut -f1
+  else
+    echo ""
+  fi
+}
+
+OUT="build/app/outputs/flutter-apk"
+RELEASE_APK_SIZE="$(apk_size "$OUT/app-release.apk")"
+ARM32_APK_SIZE="$(apk_size "$OUT/app-armeabi-v7a-release.apk")"
+ARM64_APK_SIZE="$(apk_size "$OUT/app-arm64-v8a-release.apk")"
+X64_APK_SIZE="$(apk_size "$OUT/app-x86_64-release.apk")"
+DEBUG_APK_SIZE="$(apk_size "$OUT/app-debug.apk")"
+
+row() {
+  local file="$1" size="$2" desc="$3"
+  if [ -n "$size" ]; then
+    echo "| **${file}** (~${size}) | ${desc} |"
+  else
+    echo "| **${file}** | ${desc} |"
+  fi
+}
 
 {
   echo "# Blushcraft ${TAG#v}"
@@ -60,16 +74,11 @@ fi
   echo ""
   echo "| File | Description |"
   echo "|------|-------------|"
-  if [ -n "$RELEASE_APK_SIZE" ]; then
-    echo "| **app-release.apk** (~${RELEASE_APK_SIZE}) | Signed release build. Use for installs and in-place updates. |"
-  else
-    echo "| **app-release.apk** | Signed release build. Use for installs and in-place updates. |"
-  fi
-  if [ -n "$DEBUG_APK_SIZE" ]; then
-    echo "| **app-debug.apk** (~${DEBUG_APK_SIZE}) | Debug build with logging enabled. For testing only. |"
-  else
-    echo "| **app-debug.apk** | Debug build with logging enabled. For testing only. |"
-  fi
+  row "app-arm64-v8a-release.apk" "$ARM64_APK_SIZE" "Signed release for most modern phones (recommended)."
+  row "app-armeabi-v7a-release.apk" "$ARM32_APK_SIZE" "Signed release for older 32-bit ARM devices."
+  row "app-x86_64-release.apk" "$X64_APK_SIZE" "Signed release for x86_64 emulators / Chromebooks."
+  row "app-release.apk" "$RELEASE_APK_SIZE" "Universal fat APK (all ABIs). Largest download; works everywhere."
+  row "app-debug.apk" "$DEBUG_APK_SIZE" "Debug build with logging enabled. For testing only."
   echo ""
   echo "### Automatic updates (Obtainium)"
   echo ""
@@ -80,7 +89,7 @@ fi
   echo "| **Source** | GitHub |"
   echo "| **Repository** | \`${REPO}\` |"
   echo "| **Release filter** | \`v*\` tags |"
-  echo "| **APK filter** | \`app-release.apk\` |"
+  echo "| **APK filter** | \`app-arm64-v8a-release.apk\` (phones) or \`app-release.apk\` (universal) |"
   echo ""
   echo "Obtainium tracks GitHub Releases - no separate store submission. See [docs/distribution.md](https://github.com/${REPO}/blob/main/docs/distribution.md)."
   echo ""
