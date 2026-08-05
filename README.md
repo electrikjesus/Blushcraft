@@ -101,9 +101,13 @@ git tag v0.2.0
 ./tool/build_apk.sh   # versionName=0.2.0, versionCode=<commit count>
 ```
 
-## Online play (not in v1)
+## Online play
 
-See `lib/networking/online_play_stub.dart` for the future Supabase / WebRTC hook.
+**Local (shipping):** Nearby Connections (Bluetooth / Wi‑Fi).
+
+**Internet (designed, not built yet):** WebRTC + QR signaling so round data never leaves the two devices. See [docs/architecture-webrtc-qr.md](docs/architecture-webrtc-qr.md).
+
+Later: Supabase or Cloudflare can replace QR for signaling only (optional TURN), without putting card/score sync in the cloud.
 
 ## License
 

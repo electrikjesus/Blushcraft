@@ -1,5 +1,8 @@
-/// Future hook for internet play (Supabase rooms + WebRTC selfie).
-/// Not used in v1; local Nearby Connections only.
+/// Online invite / session hooks.
+///
+/// v1 internet design: WebRTC + QR signaling (see docs/architecture-webrtc-qr.md).
+/// Round data stays on-device via GameMessage over an RTCDataChannel.
+/// Later: Supabase/Cloudflare replace QR for signaling only — not game state.
 abstract class OnlinePlaySession {
   Future<void> createRoom({required String displayName});
   Future<void> joinRoom({required String roomCode, required String displayName});
@@ -12,7 +15,9 @@ class OnlinePlayStub implements OnlinePlaySession {
   @override
   Future<void> createRoom({required String displayName}) async {
     throw UnimplementedError(
-      'Online play is not available yet. Use Host / Join for local play.',
+      'Online WebRTC+QR play is not implemented yet. '
+      'Use Host / Join for local Nearby play. '
+      'See docs/architecture-webrtc-qr.md.',
     );
   }
 
@@ -22,7 +27,8 @@ class OnlinePlayStub implements OnlinePlaySession {
     required String displayName,
   }) async {
     throw UnimplementedError(
-      'Online play is not available yet. Use Host / Join for local play.',
+      'Online WebRTC+QR play is not implemented yet. '
+      'Use Host / Join for local Nearby play.',
     );
   }
 
