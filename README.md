@@ -6,31 +6,37 @@ Rounds stay light or turn spicy with the **Riskay** slider. Play face to face ov
 
 First to **5** Statement points wins and picks the prize.
 
+## Screenshots
+
 <p align="center">
-  <img src="docs/screenshots/home.png" alt="Home: name, Riskay slider, Nearby and Online play" width="220" />
-  &nbsp;
-  <img src="docs/screenshots/lobby.png" alt="Practice lobby ready to start" width="220" />
-  &nbsp;
-  <img src="docs/screenshots/play.png" alt="Round 1: statement and choice hand" width="220" />
+  <img src="docs/screenshots/home.png" alt="Home: name, Riskay slider, Nearby and Online play" width="200" />
+  <img src="docs/screenshots/lobby.png" alt="Practice lobby ready to start" width="200" />
+  <img src="docs/screenshots/play.png" alt="Round 1: statement, camera row, and choice hand" width="200" />
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/choice-selected.png" alt="Browsing Choice cards to submit" width="220" />
-  &nbsp;
-  <img src="docs/screenshots/reveal.png" alt="Reveal: filled statements ready to read aloud" width="220" />
-  &nbsp;
-  <img src="docs/screenshots/reaction.png" alt="Reaction check: who broke first" width="220" />
+  <img src="docs/screenshots/choice-selected.png" alt="Browsing Choice cards to submit" width="200" />
+  <img src="docs/screenshots/reveal.png" alt="Reveal: filled statements ready to read aloud" width="200" />
+  <img src="docs/screenshots/reaction.png" alt="Reaction check: who broke first" width="200" />
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/round-result.png" alt="Round result with point and share combo" width="220" />
+  <img src="docs/screenshots/round-result.png" alt="Round result with point and share combo" width="200" />
 </p>
 
-### Round demo
+## Round demo
 
-Short clip of a practice round: scroll the Choice hand, submit, reveal, reaction check, and score a point.
+Practice round in ~12 seconds: scroll the hand, submit, reveal, reaction check, score a point. Tap the preview for the full MP4.
 
-[Watch `docs/screenshots/round-demo.mp4`](docs/screenshots/round-demo.mp4) (~12s)
+<p align="center">
+  <a href="docs/screenshots/round-demo.mp4">
+    <img src="docs/screenshots/round-demo.gif" alt="Animated Blushcraft round demo" width="280" />
+  </a>
+</p>
+
+<p align="center">
+  <a href="docs/screenshots/round-demo.mp4"><strong>Play round-demo.mp4</strong></a>
+</p>
 
 Built with **Flutter** (Android first, iOS-ready). Local multiplayer uses Google **Nearby Connections** (Bluetooth / Wi-Fi). Online play uses **WebRTC + QR** so round data stays on the two phones.
 
@@ -137,6 +143,8 @@ To cut a named release:
 git tag v0.2.0
 git push origin v0.2.0   # triggers Create Release workflow
 ```
+
+Refresh `docs/screenshots/` (stills + `round-demo.mp4` / `.gif`) when the UI changes before tagging so the README stays current.
 
 ## Online play
 
