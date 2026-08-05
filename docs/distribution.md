@@ -11,6 +11,19 @@ Blushcraft ships APKs from GitHub when you push a `v*` tag (see `.github/workflo
 
 This is the source of truth for prebuilt binaries.
 
+## Screenshots for listings
+
+README embeds the animated demo (`docs/screenshots/round-demo.gif` / `.mp4`).
+
+Static stills for Obtainium, F-Droid, or other profiles are generated from that video:
+
+```bash
+./tool/extract_store_screenshots.sh
+# → docs/screenshots/store/01-home.png … 07-result.png
+```
+
+Keep a curated `store/01-home.png` if you want a sharper home still than the early demo frame.
+
 ## Signing (maintainers)
 
 Same secret names as BumpDesk:

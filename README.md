@@ -6,24 +6,6 @@ Rounds stay light or turn spicy with the **Riskay** slider. Play face to face ov
 
 First to **5** Statement points wins and picks the prize.
 
-## Screenshots
-
-<p align="center">
-  <img src="docs/screenshots/home.png" alt="Home: name, Riskay slider, Nearby and Online play" width="200" />
-  <img src="docs/screenshots/lobby.png" alt="Practice lobby ready to start" width="200" />
-  <img src="docs/screenshots/play.png" alt="Round 1: statement, camera row, and choice hand" width="200" />
-</p>
-
-<p align="center">
-  <img src="docs/screenshots/choice-selected.png" alt="Browsing Choice cards to submit" width="200" />
-  <img src="docs/screenshots/reveal.png" alt="Reveal: filled statements ready to read aloud" width="200" />
-  <img src="docs/screenshots/reaction.png" alt="Reaction check: who broke first" width="200" />
-</p>
-
-<p align="center">
-  <img src="docs/screenshots/round-result.png" alt="Round result with point and share combo" width="200" />
-</p>
-
 ## Round demo
 
 Practice round in ~12 seconds: scroll the hand, submit, reveal, reaction check, score a point. Tap the preview for the full MP4.
@@ -37,6 +19,8 @@ Practice round in ~12 seconds: scroll the hand, submit, reveal, reaction check, 
 <p align="center">
   <a href="docs/screenshots/round-demo.mp4"><strong>Play round-demo.mp4</strong></a>
 </p>
+
+Store / Obtainium listing stills (pulled from the demo video) live in [`docs/screenshots/store/`](docs/screenshots/store/). Regenerate with `./tool/extract_store_screenshots.sh` after recording a new demo.
 
 Built with **Flutter** (Android first, iOS-ready). Local multiplayer uses Google **Nearby Connections** (Bluetooth / Wi-Fi). Online play uses **WebRTC + QR** so round data stays on the two phones.
 
@@ -144,7 +128,10 @@ git tag v0.2.0
 git push origin v0.2.0   # triggers Create Release workflow
 ```
 
-Refresh `docs/screenshots/` (stills + `round-demo.mp4` / `.gif`) when the UI changes before tagging so the README stays current.
+Refresh media before tagging so the README stays current:
+
+1. Record `docs/screenshots/round-demo.mp4` (and regenerate `round-demo.gif`).
+2. Run `./tool/extract_store_screenshots.sh` to refresh Obtainium / store stills in `docs/screenshots/store/`.
 
 ## Online play
 
