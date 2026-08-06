@@ -39,6 +39,7 @@ dependencies:
   flutter_webrtc: ^1.6.0
   qr_flutter: ^4.1.0
   mobile_scanner: ^7.4.0
+  wakelock_plus: ^1.7.0
 
 dev_dependencies:
   flutter_test:

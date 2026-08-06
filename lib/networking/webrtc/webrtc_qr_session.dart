@@ -11,12 +11,18 @@ import 'ice_config.dart';
 import 'sdp_qr_codec.dart';
 
 /// WebRTC session paired via QR / paste (no signaling server).
+///
+/// Pairing uses a **data-channel-only** offer/answer so invite strings stay
+/// short and scannable. Camera/mic tracks are attached after the channel opens
+/// and upgraded over the data channel.
 class WebRtcQrSession extends GameSession {
   WebRtcQrSession({
     required this.userName,
     required this.onMessage,
     this.onConnection,
   });
+
+  static const _rtcControlPrefix = '__bc_rtc__:';
 
   final String userName;
   final MessageHandler onMessage;
@@ -26,6 +32,9 @@ class WebRtcQrSession extends GameSession {
   RTCDataChannel? _channel;
   final _ice = <RTCIceCandidate>[];
   final _uuid = const Uuid();
+  Timer? _connectTimer;
+  bool _mediaUpgradeStarted = false;
+  bool _handlingRtcControl = false;
 
   String? sessionId;
   String? offerPayload;
@@ -40,6 +49,9 @@ class WebRtcQrSession extends GameSession {
 
   @override
   String? status;
+
+  /// Last pairing / connection error for UI (cleared on progress).
+  String? lastError;
 
   @override
   bool get isConnected =>
@@ -65,12 +77,25 @@ class WebRtcQrSession extends GameSession {
     };
     pc.onConnectionState = (state) {
       debugPrint('PC state: $state');
-      if (state == RTCPeerConnectionState.RTCPeerConnectionStateFailed ||
-          state == RTCPeerConnectionState.RTCPeerConnectionStateDisconnected ||
+      if (state == RTCPeerConnectionState.RTCPeerConnectionStateFailed) {
+        lastError =
+            'Connection failed. Stay on the same Wi‑Fi when possible '
+            '(online play is STUN-only for now).';
+        status = lastError;
+        _connectTimer?.cancel();
+        notifyListeners();
+        if (_hadConnection) {
+          _handleDisconnect();
+        }
+      } else if (state ==
+              RTCPeerConnectionState.RTCPeerConnectionStateDisconnected ||
           state == RTCPeerConnectionState.RTCPeerConnectionStateClosed) {
         if (isConnected || _hadConnection) {
           _handleDisconnect();
         }
+      } else if (state ==
+          RTCPeerConnectionState.RTCPeerConnectionStateConnected) {
+        lastError = null;
       }
     };
     pc.onTrack = (event) {
@@ -88,6 +113,7 @@ class WebRtcQrSession extends GameSession {
   }
 
   Future<void> _attachLocalMedia(RTCPeerConnection pc) async {
+    if (_localStream != null) return;
     try {
       final stream = await navigator.mediaDevices.getUserMedia({
         'audio': true,
@@ -119,6 +145,8 @@ class WebRtcQrSession extends GameSession {
       if (state == RTCDataChannelState.RTCDataChannelOpen) {
         final wasReconnect = _hadConnection;
         _hadConnection = true;
+        _connectTimer?.cancel();
+        lastError = null;
         status = wasReconnect ? 'Reconnected' : 'Connected';
         onConnection?.call(
           connected: true,
@@ -127,6 +155,7 @@ class WebRtcQrSession extends GameSession {
           isReconnect: wasReconnect,
         );
         notifyListeners();
+        unawaited(_upgradeMediaAfterConnect());
       } else if (state == RTCDataChannelState.RTCDataChannelClosed) {
         _handleDisconnect();
       }
@@ -136,6 +165,10 @@ class WebRtcQrSession extends GameSession {
         if (message.isBinary) return;
         final raw = message.text;
         if (raw.isEmpty) return;
+        if (raw.startsWith(_rtcControlPrefix)) {
+          await _handleRtcControl(raw.substring(_rtcControlPrefix.length));
+          return;
+        }
         final msg = GameMessage.decode(raw);
         await onMessage(msg);
       } catch (e) {
@@ -144,13 +177,95 @@ class WebRtcQrSession extends GameSession {
     };
   }
 
+  Future<void> _sendRtcControl(Map<String, dynamic> body) async {
+    final ch = _channel;
+    if (ch == null || ch.state != RTCDataChannelState.RTCDataChannelOpen) {
+      return;
+    }
+    await ch.send(RTCDataChannelMessage('$_rtcControlPrefix${jsonEncode(body)}'));
+  }
+
+  Future<void> _upgradeMediaAfterConnect() async {
+    if (_mediaUpgradeStarted) return;
+    _mediaUpgradeStarted = true;
+    final pc = _pc;
+    if (pc == null) return;
+
+    await _attachLocalMedia(pc);
+    // Only the host drives renegotiation so both sides share one offer/answer.
+    if (!_isHost) return;
+
+    try {
+      _ice.clear();
+      final offer = await pc.createOffer({
+        'offerToReceiveAudio': 1,
+        'offerToReceiveVideo': 1,
+      });
+      await pc.setLocalDescription(offer);
+      await _waitForIce(pc, timeout: const Duration(seconds: 8));
+      final local = await pc.getLocalDescription();
+      await _sendRtcControl({
+        'op': 'upgrade_offer',
+        'sdp': local?.sdp ?? offer.sdp ?? '',
+        'ice': _serializeIce(),
+      });
+    } catch (e) {
+      debugPrint('Media upgrade offer failed: $e');
+    }
+  }
+
+  Future<void> _handleRtcControl(String jsonBody) async {
+    if (_handlingRtcControl) return;
+    _handlingRtcControl = true;
+    try {
+      final map = jsonDecode(jsonBody) as Map<String, dynamic>;
+      final op = map['op'] as String?;
+      final pc = _pc;
+      if (pc == null || op == null) return;
+
+      if (op == 'upgrade_offer' && !_isHost) {
+        await _attachLocalMedia(pc);
+        await pc.setRemoteDescription(
+          RTCSessionDescription(map['sdp'] as String, 'offer'),
+        );
+        await _applyRemoteIce(map['ice'] as List<dynamic>?);
+        _ice.clear();
+        final answer = await pc.createAnswer({
+          'offerToReceiveAudio': 1,
+          'offerToReceiveVideo': 1,
+        });
+        await pc.setLocalDescription(answer);
+        await _waitForIce(pc, timeout: const Duration(seconds: 8));
+        final local = await pc.getLocalDescription();
+        await _sendRtcControl({
+          'op': 'upgrade_answer',
+          'sdp': local?.sdp ?? answer.sdp ?? '',
+          'ice': _serializeIce(),
+        });
+      } else if (op == 'upgrade_answer' && _isHost) {
+        await pc.setRemoteDescription(
+          RTCSessionDescription(map['sdp'] as String, 'answer'),
+        );
+        await _applyRemoteIce(map['ice'] as List<dynamic>?);
+      }
+    } catch (e) {
+      debugPrint('RTC control failed: $e');
+    } finally {
+      _handlingRtcControl = false;
+    }
+  }
+
   void _handleDisconnect() {
+    _connectTimer?.cancel();
     status = 'Partner disconnected';
     onConnection?.call(connected: false, isReconnect: false);
     notifyListeners();
   }
 
-  Future<void> _waitForIce(RTCPeerConnection pc, {Duration timeout = const Duration(seconds: 4)}) async {
+  Future<void> _waitForIce(
+    RTCPeerConnection pc, {
+    Duration timeout = const Duration(seconds: 8),
+  }) async {
     final done = Completer<void>();
     void check(RTCIceGatheringState? state) {
       if (state == RTCIceGatheringState.RTCIceGatheringStateComplete &&
@@ -167,9 +282,38 @@ class WebRtcQrSession extends GameSession {
     ]);
   }
 
+  /// Keep a small set of host/srflx candidates to shrink QR payloads.
   List<String> _serializeIce() {
-    return _ice
-        .where((c) => c.candidate != null && c.candidate!.isNotEmpty)
+    final byType = <String, List<RTCIceCandidate>>{
+      'host': [],
+      'srflx': [],
+      'relay': [],
+      'other': [],
+    };
+    for (final c in _ice) {
+      final raw = c.candidate;
+      if (raw == null || raw.isEmpty) continue;
+      if (raw.contains('typ host')) {
+        byType['host']!.add(c);
+      } else if (raw.contains('typ srflx')) {
+        byType['srflx']!.add(c);
+      } else if (raw.contains('typ relay')) {
+        byType['relay']!.add(c);
+      } else {
+        byType['other']!.add(c);
+      }
+    }
+
+    final picked = <RTCIceCandidate>[
+      ...byType['host']!.take(2),
+      ...byType['srflx']!.take(2),
+      ...byType['relay']!.take(1),
+    ];
+    if (picked.isEmpty) {
+      picked.addAll(_ice.take(4));
+    }
+
+    return picked
         .map(
           (c) => jsonEncode({
             'candidate': c.candidate,
@@ -201,16 +345,29 @@ class WebRtcQrSession extends GameSession {
     }
   }
 
-  /// Host: build offer payload for QR / share.
+  void _armConnectTimeout() {
+    _connectTimer?.cancel();
+    _connectTimer = Timer(const Duration(seconds: 30), () {
+      if (isConnected) return;
+      lastError =
+          'Still connecting… Check Wi‑Fi, or paste a fresh answer and try again.';
+      status = lastError;
+      notifyListeners();
+    });
+  }
+
+  /// Host: build a short data-channel invite for QR / share.
   Future<String> startAsHost() async {
     _isHost = true;
+    _mediaUpgradeStarted = false;
     sessionId = _uuid.v4();
     _ice.clear();
+    lastError = null;
     status = 'Creating invite…';
     notifyListeners();
 
     final pc = await _createPc();
-    await _attachLocalMedia(pc);
+    // Data-channel only for pairing — keeps the QR short.
 
     final channel = await pc.createDataChannel(
       'blushcraft',
@@ -218,10 +375,7 @@ class WebRtcQrSession extends GameSession {
     );
     _bindChannel(channel);
 
-    final offer = await pc.createOffer({
-      'offerToReceiveAudio': 1,
-      'offerToReceiveVideo': 1,
-    });
+    final offer = await pc.createOffer({});
     await pc.setLocalDescription(offer);
     await _waitForIce(pc);
 
@@ -233,7 +387,7 @@ class WebRtcQrSession extends GameSession {
       sdp: local?.sdp ?? offer.sdp ?? '',
       ice: _serializeIce(),
     );
-    status = 'Show this QR to your partner (best on Wi-Fi)';
+    status = 'Show this QR to your partner (best on Wi‑Fi)';
     notifyListeners();
     return offerPayload!;
   }
@@ -241,7 +395,9 @@ class WebRtcQrSession extends GameSession {
   /// Guest: consume host offer, return answer payload for host to scan.
   Future<String> acceptOfferAndCreateAnswer(String rawOffer) async {
     _isHost = false;
+    _mediaUpgradeStarted = false;
     _ice.clear();
+    lastError = null;
     status = 'Joining…';
     notifyListeners();
 
@@ -252,17 +408,13 @@ class WebRtcQrSession extends GameSession {
     sessionId = envelope['session'] as String?;
 
     final pc = await _createPc();
-    await _attachLocalMedia(pc);
 
     await pc.setRemoteDescription(
       RTCSessionDescription(envelope['sdp'] as String, 'offer'),
     );
     await _applyRemoteIce(envelope['ice'] as List<dynamic>?);
 
-    final answer = await pc.createAnswer({
-      'offerToReceiveAudio': 1,
-      'offerToReceiveVideo': 1,
-    });
+    final answer = await pc.createAnswer({});
     await pc.setLocalDescription(answer);
     await _waitForIce(pc);
 
@@ -295,11 +447,13 @@ class WebRtcQrSession extends GameSession {
       throw const FormatException('Answer session does not match this invite');
     }
 
+    lastError = null;
     await pc.setRemoteDescription(
       RTCSessionDescription(envelope['sdp'] as String, 'answer'),
     );
     await _applyRemoteIce(envelope['ice'] as List<dynamic>?);
     status = 'Connecting…';
+    _armConnectTimeout();
     notifyListeners();
   }
 
@@ -326,6 +480,8 @@ class WebRtcQrSession extends GameSession {
 
   @override
   Future<void> stopAll() async {
+    _connectTimer?.cancel();
+    _connectTimer = null;
     try {
       await _channel?.close();
     } catch (_) {}
@@ -346,7 +502,9 @@ class WebRtcQrSession extends GameSession {
     offerPayload = null;
     answerPayload = null;
     status = null;
+    lastError = null;
     mediaReady = false;
+    _mediaUpgradeStarted = false;
     notifyListeners();
   }
 

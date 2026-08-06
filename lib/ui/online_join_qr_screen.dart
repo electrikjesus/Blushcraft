@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../networking/webrtc/sdp_qr_codec.dart';
 import '../networking/webrtc/webrtc_qr_session.dart';
@@ -28,6 +29,7 @@ class OnlineJoinQrScreen extends StatefulWidget {
 class _OnlineJoinQrScreenState extends State<OnlineJoinQrScreen> {
   final _offerController = TextEditingController();
   final _chunks = <String>[];
+  final _scannerController = MobileScannerController();
   String? _error;
   bool _busy = false;
   bool _showScanner = true;
@@ -38,24 +40,32 @@ class _OnlineJoinQrScreenState extends State<OnlineJoinQrScreen> {
   void initState() {
     super.initState();
     widget.session.addListener(_onSession);
+    WakelockPlus.enable();
   }
 
   void _onSession() {
     if (widget.session.isConnected && mounted) {
       widget.onConnected();
-    } else if (mounted) {
-      setState(() {});
+      return;
     }
+    if (!mounted) return;
+    final err = widget.session.lastError;
+    setState(() {
+      if (err != null) _error = err;
+    });
   }
 
   @override
   void dispose() {
     widget.session.removeListener(_onSession);
     _offerController.dispose();
+    _scannerController.dispose();
+    WakelockPlus.disable();
     super.dispose();
   }
 
   Future<void> _handleScanned(String value) async {
+    if (_busy || widget.session.answerPayload != null) return;
     final text = value.trim();
     if (text.startsWith('BC1C:')) {
       if (_chunks.contains(text)) return;
@@ -64,7 +74,6 @@ class _OnlineJoinQrScreenState extends State<OnlineJoinQrScreen> {
         final joined = SdpQrCodec.joinChunks(_chunks);
         await _acceptOffer(joined);
       } catch (_) {
-        // Wait for more chunks.
         setState(() {
           _error = 'Scanned ${_chunks.length} part(s)…';
         });
@@ -84,6 +93,7 @@ class _OnlineJoinQrScreenState extends State<OnlineJoinQrScreen> {
       _showScanner = false;
     });
     try {
+      await _scannerController.stop();
       final answer = await widget.session.acceptOfferAndCreateAnswer(raw);
       setState(() {
         _answerChunks = SdpQrCodec.chunk(answer);
@@ -95,6 +105,9 @@ class _OnlineJoinQrScreenState extends State<OnlineJoinQrScreen> {
         _showScanner = true;
         _chunks.clear();
       });
+      try {
+        await _scannerController.start();
+      } catch (_) {}
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -127,8 +140,10 @@ class _OnlineJoinQrScreenState extends State<OnlineJoinQrScreen> {
             const SizedBox(height: 8),
             Text(
               answer == null
-                  ? 'Scan their QR or paste the invite text. Then show your answer QR back.'
-                  : 'Have the host scan this (or paste the answer on their phone).',
+                  ? 'Scan their QR or paste the invite text. Keep this screen '
+                      'awake. Then show your answer QR back.'
+                  : 'Have the host scan this QR (or Copy / Share the answer text). '
+                      'Keep both phones awake until Connected.',
               style: BlushTheme.body(14, color: BlushTheme.inkMuted),
             ),
             const SizedBox(height: 8),
@@ -144,6 +159,7 @@ class _OnlineJoinQrScreenState extends State<OnlineJoinQrScreen> {
                   child: SizedBox(
                     height: 240,
                     child: MobileScanner(
+                      controller: _scannerController,
                       onDetect: (capture) {
                         final barcodes = capture.barcodes;
                         if (barcodes.isEmpty) return;
@@ -158,8 +174,8 @@ class _OnlineJoinQrScreenState extends State<OnlineJoinQrScreen> {
               const SizedBox(height: 16),
               TextField(
                 controller: _offerController,
-                minLines: 3,
-                maxLines: 6,
+                minLines: 2,
+                maxLines: 5,
                 decoration: const InputDecoration(
                   hintText: 'Or paste BC1:… invite here',
                 ),
@@ -184,6 +200,7 @@ class _OnlineJoinQrScreenState extends State<OnlineJoinQrScreen> {
                       data: payload,
                       size: 240,
                       backgroundColor: Colors.white,
+                      errorCorrectionLevel: QrErrorCorrectLevel.M,
                     ),
                   ),
                 ),

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../networking/webrtc/sdp_qr_codec.dart';
 import '../networking/webrtc/webrtc_qr_session.dart';
@@ -26,8 +28,11 @@ class OnlineHostQrScreen extends StatefulWidget {
 
 class _OnlineHostQrScreenState extends State<OnlineHostQrScreen> {
   final _answerController = TextEditingController();
+  final _answerChunks = <String>[];
+  final _scannerController = MobileScannerController();
   String? _error;
   bool _busy = false;
+  bool _showScanner = false;
   List<String> _offerChunks = const [];
   int _chunkIndex = 0;
 
@@ -35,6 +40,7 @@ class _OnlineHostQrScreenState extends State<OnlineHostQrScreen> {
   void initState() {
     super.initState();
     widget.session.addListener(_onSession);
+    WakelockPlus.enable();
     _bootstrap();
   }
 
@@ -60,29 +66,63 @@ class _OnlineHostQrScreenState extends State<OnlineHostQrScreen> {
   void _onSession() {
     if (widget.session.isConnected && mounted) {
       widget.onConnected();
-    } else if (mounted) {
-      setState(() {});
+      return;
     }
+    if (!mounted) return;
+    final err = widget.session.lastError;
+    setState(() {
+      if (err != null) _error = err;
+    });
   }
 
   @override
   void dispose() {
     widget.session.removeListener(_onSession);
     _answerController.dispose();
+    _scannerController.dispose();
+    WakelockPlus.disable();
     super.dispose();
   }
 
-  Future<void> _submitAnswer() async {
-    final raw = _answerController.text.trim();
+  Future<void> _handleScannedAnswer(String value) async {
+    final text = value.trim();
+    if (text.startsWith('BC1C:')) {
+      if (_answerChunks.contains(text)) return;
+      _answerChunks.add(text);
+      try {
+        final joined = SdpQrCodec.joinChunks(_answerChunks);
+        _answerController.text = joined;
+        await _submitAnswer(joined);
+      } catch (_) {
+        setState(() {
+          _error = 'Scanned ${_answerChunks.length} answer part(s)…';
+        });
+      }
+      return;
+    }
+    if (text.contains('BC1:')) {
+      _answerController.text = text;
+      await _submitAnswer(text);
+    }
+  }
+
+  Future<void> _submitAnswer([String? rawOverride]) async {
+    final raw = (rawOverride ?? _answerController.text).trim();
     if (raw.isEmpty) return;
+    if (_busy || widget.session.isConnected) return;
     setState(() {
       _busy = true;
       _error = null;
+      _showScanner = false;
     });
     try {
+      await _scannerController.stop();
       await widget.session.acceptAnswer(raw);
     } catch (e) {
-      setState(() => _error = '$e');
+      setState(() {
+        _error = '$e';
+        _answerChunks.clear();
+      });
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -90,8 +130,10 @@ class _OnlineHostQrScreenState extends State<OnlineHostQrScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final payload =
-        _offerChunks.isEmpty ? null : _offerChunks[_chunkIndex.clamp(0, _offerChunks.length - 1)];
+    final payload = _offerChunks.isEmpty
+        ? null
+        : _offerChunks[_chunkIndex.clamp(0, _offerChunks.length - 1)];
+    final connecting = (widget.session.status ?? '').startsWith('Connecting');
 
     return BlushBackdrop(
       child: Scaffold(
@@ -109,8 +151,8 @@ class _OnlineHostQrScreenState extends State<OnlineHostQrScreen> {
             Text('Invite with QR', style: BlushTheme.display(28)),
             const SizedBox(height: 8),
             Text(
-              'Your partner scans this code (or you share the text). '
-              'Works best on Wi-Fi. No game data leaves your phones.',
+              'Shorter data-only invites — your partner scans this (or you share '
+              'the text). Keep this screen awake until you connect. Best on Wi‑Fi.',
               style: BlushTheme.body(14, color: BlushTheme.inkMuted),
             ),
             const SizedBox(height: 8),
@@ -133,6 +175,7 @@ class _OnlineHostQrScreenState extends State<OnlineHostQrScreen> {
                     data: payload,
                     size: 240,
                     backgroundColor: Colors.white,
+                    errorCorrectionLevel: QrErrorCorrectLevel.M,
                   ),
                 ),
               ),
@@ -199,21 +242,72 @@ class _OnlineHostQrScreenState extends State<OnlineHostQrScreen> {
               ),
             ],
             const SizedBox(height: 28),
-            Text('Paste their answer', style: BlushTheme.display(20)),
+            Text('Their answer', style: BlushTheme.display(20)),
             const SizedBox(height: 8),
-            TextField(
-              controller: _answerController,
-              minLines: 3,
-              maxLines: 6,
-              decoration: const InputDecoration(
-                hintText: 'Paste BC1:… answer from your partner',
-              ),
+            Text(
+              'Scan their answer QR, or paste the answer text below.',
+              style: BlushTheme.body(13, color: BlushTheme.inkMuted),
             ),
             const SizedBox(height: 12),
-            ElevatedButton(
-              onPressed: _busy ? null : _submitAnswer,
-              child: const Text('Connect with answer'),
-            ),
+            if (!connecting) ...[
+              OutlinedButton.icon(
+                onPressed: _busy
+                    ? null
+                    : () async {
+                        setState(() => _showScanner = !_showScanner);
+                        if (_showScanner) {
+                          await _scannerController.start();
+                        } else {
+                          await _scannerController.stop();
+                        }
+                      },
+                icon: Icon(_showScanner ? Icons.close : Icons.qr_code_scanner),
+                label: Text(_showScanner ? 'Hide scanner' : 'Scan answer QR'),
+              ),
+              if (_showScanner) ...[
+                const SizedBox(height: 12),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: SizedBox(
+                    height: 220,
+                    child: MobileScanner(
+                      controller: _scannerController,
+                      onDetect: (capture) {
+                        final barcodes = capture.barcodes;
+                        if (barcodes.isEmpty) return;
+                        final v = barcodes.first.rawValue;
+                        if (v != null) {
+                          _handleScannedAnswer(v);
+                        }
+                      },
+                    ),
+                  ),
+                ),
+              ],
+              const SizedBox(height: 12),
+              TextField(
+                controller: _answerController,
+                minLines: 2,
+                maxLines: 5,
+                decoration: const InputDecoration(
+                  hintText: 'Paste BC1:… answer from your partner',
+                ),
+              ),
+              const SizedBox(height: 12),
+              ElevatedButton(
+                onPressed: _busy ? null : () => _submitAnswer(),
+                child: const Text('Connect with answer'),
+              ),
+            ] else ...[
+              const SizedBox(height: 8),
+              const Center(child: CircularProgressIndicator()),
+              const SizedBox(height: 12),
+              Text(
+                'Finishing the peer connection… keep the app open.',
+                textAlign: TextAlign.center,
+                style: BlushTheme.body(14, color: BlushTheme.inkMuted),
+              ),
+            ],
             if (_error != null) ...[
               const SizedBox(height: 12),
               Text(

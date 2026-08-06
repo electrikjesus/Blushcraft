@@ -7,8 +7,31 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:blushcraft/data/card_repository.dart';
 import 'package:blushcraft/models/card.dart';
 import 'package:blushcraft/models/game_mode.dart';
+import 'package:blushcraft/networking/webrtc/sdp_qr_codec.dart';
 
 void main() {
+  test('SdpQrCodec round-trips and joins pasted chunks', () {
+    final payload = SdpQrCodec.encodeEnvelope(
+      role: 'offer',
+      sessionId: 'sess-1',
+      displayName: 'Player',
+      sdp: 'v=0\r\no=- 0 0 IN IP4 127.0.0.1\r\ns=-\r\nt=0 0\r\n',
+      ice: [
+        '{"candidate":"candidate:1 1 UDP 2122252543 10.0.0.1 54400 typ host","sdpMid":"0","sdpMLineIndex":0}',
+      ],
+    );
+    expect(payload.startsWith('BC1:'), isTrue);
+    final decoded = SdpQrCodec.decodeEnvelope(payload);
+    expect(decoded['role'], 'offer');
+    expect(decoded['session'], 'sess-1');
+
+    final parts = SdpQrCodec.chunk(payload, size: 40);
+    expect(parts.length, greaterThan(1));
+    expect(parts.first.startsWith('BC1C:'), isTrue);
+    final joined = SdpQrCodec.normalizeIncoming(parts.join('\n'));
+    expect(SdpQrCodec.decodeEnvelope(joined)['session'], 'sess-1');
+  });
+
   test('StatementCard fills first blank only', () {
     const s = StatementCard(
       id: 15,

@@ -4,7 +4,9 @@ import 'dart:io';
 /// Compress / encode WebRTC signaling blobs for QR or paste.
 class SdpQrCodec {
   static const packageId = 'com.blushcraft.blushcraft';
-  static const maxSingleQrChars = 1200;
+
+  /// Target size for a single scannable QR (data-channel invites are usually under this).
+  static const maxSingleQrChars = 900;
 
   static String encodeEnvelope({
     required String role,
@@ -28,13 +30,24 @@ class SdpQrCodec {
     return 'BC1:$b64';
   }
 
+  /// Accept a single `BC1:` blob or pasted multi-part `BC1C:` chunks.
+  static String normalizeIncoming(String raw) {
+    final text = raw.trim();
+    // Payload may itself start with "BC1:", so allow ':' inside the slice.
+    final chunkRe = RegExp(r'BC1C:\d+/\d+:\S+');
+    final chunks = chunkRe.allMatches(text).map((m) => m.group(0)!).toList();
+    if (chunks.isNotEmpty) {
+      return joinChunks(chunks);
+    }
+    return text;
+  }
+
   static Map<String, dynamic> decodeEnvelope(String raw) {
-    var text = raw.trim();
+    var text = normalizeIncoming(raw);
     final marker = text.indexOf('BC1:');
     if (marker >= 0) {
       text = text.substring(marker);
     }
-    // Strip chunk wrappers if a single joined string was passed.
     if (text.startsWith('BC1C:')) {
       throw const FormatException('Pass joined chunks via joinChunks first');
     }

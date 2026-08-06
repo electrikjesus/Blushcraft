@@ -21,22 +21,25 @@ Later: swap QR signaling for Supabase or Cloudflare **signaling-only** (and opti
 Host                         Guest
   |                            |
   | createPeerConnection       |
-  | createDataChannel          |
-  | createOffer, gather ICE    |
+  | createDataChannel (only)   |
+  | createOffer, lean ICE      |
   | encode offer -> QR/text ------> scan / paste
   |                            | setRemoteDescription(offer)
-  |                            | createAnswer, gather ICE
+  |                            | createAnswer, lean ICE
   | scan / paste <------------- encode answer -> QR/text
   | setRemoteDescription       |
   |                            |
   |<===== RTCDataChannel open =====>|
   | Hello + StateSync (GameMessage) |
+  | renegotiate A/V over DC ------->|
   |<===== WebRTC audio/video ======>|
 ```
 
+Invites are **data-channel-only** so QR/paste strings stay short. Camera/mic are attached after connect and upgraded over the data channel. Pairing screens keep the display awake until Connected.
+
 ### QR payload
 
-Versioned envelope, zlib + base64url (chunked multi-QR if needed):
+Versioned envelope, gzip + base64url (chunked multi-QR if needed):
 
 ```json
 {
@@ -50,16 +53,16 @@ Versioned envelope, zlib + base64url (chunked multi-QR if needed):
 }
 ```
 
-- Prefer **bundled ICE** in the offer/answer to avoid a third QR when possible.
-- Fallback: extra “ICE” QR or paste field for stubborn NATs.
+- Prefer **bundled lean ICE** (host/srflx) in the offer/answer.
 - Optional later deep link: `blushcraft://webrtc?...` (same payload).
 
 ### UX sketch
 
-- **Host online** → show QR + share text + waiting state.
-- **Join online** → scan or paste → show answer QR for host to scan.
+- **Host online** → show QR + share text; scan or paste guest answer.
+- **Join online** → scan or paste invite → show answer QR for host to scan.
 - Once the data channel opens → existing lobby / game UI.
 - Honest copy: best on Wi-Fi; some mobile networks may need a later TURN update.
+- Keep both phones awake on the QR screens until Connected.
 
 ## Module layout (proposed)
 
