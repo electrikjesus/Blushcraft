@@ -38,16 +38,16 @@ extract() {
 DUR="$(ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 "$DEMO" | cut -d. -f1)"
 echo "demo ($DEMO) duration ~${DUR}s"
 
-# Absolute times for the trimmed ~12s release demo (tool/record_round_demo.py).
-extract 1.0  "${STORE}/01-home.png"
+# Absolute times for the trimmed ~13s release demo (tool/record_round_demo.py).
+extract 1.5  "${STORE}/01-home.png"
 cp -f "${STORE}/01-home.png" "${SHOTS}/home.png"
 
-extract 4.2  "${STORE}/02-lobby.png"
-extract 5.2  "${STORE}/03-play.png"
-extract 6.2  "${STORE}/04-choice.png"
-extract 9.0  "${STORE}/05-reveal.png"
-extract 10.0 "${STORE}/06-reaction.png"
-extract 11.0 "${STORE}/07-result.png"
+extract 4.5  "${STORE}/02-lobby.png"
+extract 5.5  "${STORE}/03-play.png"
+extract 7.5  "${STORE}/04-choice.png"
+extract 9.7  "${STORE}/05-reveal.png"
+extract 11.0 "${STORE}/06-reaction.png"
+extract 12.2 "${STORE}/07-result.png"
 
 echo "Store screenshots:"
 ls -lh "${STORE}"
