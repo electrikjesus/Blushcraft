@@ -133,8 +133,9 @@ git push origin v0.2.0   # triggers Create Release workflow
 
 Refresh media before tagging so the README stays current:
 
-1. Record `docs/screenshots/round-demo.mp4` (and regenerate `round-demo.gif`).
-2. Run `./tool/extract_store_screenshots.sh` to refresh Obtainium / store stills in `docs/screenshots/store/`.
+1. `flutter build web --release && python3 -m http.server 7357 --directory build/web`
+2. `python3 tool/record_round_demo.py` (needs Playwright; writes `round-demo.mp4` + `.gif`)
+3. `./tool/extract_store_screenshots.sh` to refresh Obtainium / store stills in `docs/screenshots/store/`.
 
 ## Online play
 
