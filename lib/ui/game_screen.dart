@@ -411,12 +411,31 @@ class _GameScreenState extends State<GameScreen> {
         );
 
         if (layout == ReactionAvLayout.strip) {
-          // Phone strip grows into leftover height so controls sit at the bottom.
+          // Grow the phone camera strip into leftover space, but cap it so
+          // reveal / reaction / result controls stay on-screen.
+          final pipHeight = (constraints.maxHeight * 0.36)
+              .clamp(ReactionAvPanel.stripHeight, 220.0);
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Expanded(child: panel),
-              Flexible(fit: FlexFit.loose, child: child),
+              SizedBox(height: pipHeight, child: panel),
+              Expanded(
+                child: LayoutBuilder(
+                  builder: (context, bodyConstraints) {
+                    return SingleChildScrollView(
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                          minHeight: bodyConstraints.maxHeight,
+                        ),
+                        child: Align(
+                          alignment: Alignment.bottomCenter,
+                          child: child,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
             ],
           );
         }

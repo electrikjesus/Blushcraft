@@ -106,7 +106,7 @@ class ReactionAvPanel extends StatelessWidget {
   static const double sidePeerHeight = 168;
   static const double stripHeight = 88;
   static const double selfSize = 48;
-  static const double selfSizeExpanded = 72;
+  static const double selfSizeExpanded = 64;
 
   /// Space reserved when overlaying a side panel on narrow content.
   static double sideReserveWidth(ReactionAvLayout layout) =>
