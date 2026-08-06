@@ -38,29 +38,87 @@ class NearbyGameSession extends GameSession {
   bool get isConnected => connectedEndpointId != null;
 
   Future<bool> ensurePermissions() async {
-    final perms = <Permission>[
+    // permission_handler no-ops / auto-grants entries unsupported on the OS.
+    await <Permission>[
       Permission.locationWhenInUse,
       Permission.bluetooth,
       Permission.bluetoothAdvertise,
       Permission.bluetoothConnect,
       Permission.bluetoothScan,
       Permission.nearbyWifiDevices,
-    ];
-    final statuses = await perms.request();
-    final ok = statuses.values.every(
-      (s) => s.isGranted || s.isLimited || s.isRestricted,
-    );
+      Permission.accessLocalNetwork, // Android 17+ / targetSdk 37+ Wi‑Fi LAN
+    ].request();
+
+    final service = await Permission.locationWhenInUse.serviceStatus;
+    if (!service.isEnabled) {
+      status =
+          'Turn on Location (system setting) to find hosts nearby, then try again.';
+      notifyListeners();
+      return false;
+    }
+
     final locationOk = await Permission.locationWhenInUse.isGranted;
-    status = locationOk
-        ? (ok ? 'Permissions ready' : 'Some permissions missing; try again')
-        : 'Location permission required for Nearby';
+    if (!locationOk) {
+      status = 'Location permission is required for Nearby join/host.';
+      notifyListeners();
+      return false;
+    }
+
+    final bluetoothOk = await Permission.bluetoothScan.isGranted ||
+        await Permission.bluetooth.isGranted;
+    final connectOk = await Permission.bluetoothConnect.isGranted ||
+        await Permission.bluetooth.isGranted;
+    if (!bluetoothOk || !connectOk) {
+      status =
+          'Bluetooth / Nearby devices permission is required. Allow it in Settings.';
+      notifyListeners();
+      return false;
+    }
+
+    // Fail only when the OS actually supports these and the user denied them.
+    if (!await _optionalNearbyGranted(Permission.nearbyWifiDevices)) {
+      status =
+          'Nearby Wi‑Fi devices permission is required to find a host. Allow it in Settings.';
+      notifyListeners();
+      return false;
+    }
+    if (!await _optionalNearbyGranted(Permission.accessLocalNetwork)) {
+      status =
+          'Local network permission is required to join nearby games. Allow it in Settings.';
+      notifyListeners();
+      return false;
+    }
+
+    status = 'Permissions ready';
     notifyListeners();
-    return locationOk;
+    return true;
+  }
+
+  /// True if granted, or if the permission isn't applicable on this OS build.
+  ///
+  /// [permission_handler] reports unsupported API-gated permissions as
+  /// [PermissionStatus.denied] with no rationale (empty manifest name list).
+  /// A real "Don't ask again" denial is [PermissionStatus.permanentlyDenied].
+  Future<bool> _optionalNearbyGranted(Permission permission) async {
+    final status = await permission.status;
+    if (status.isGranted || status.isLimited || status.isRestricted) {
+      return true;
+    }
+    if (status.isPermanentlyDenied) {
+      return false;
+    }
+    if (status.isDenied && await permission.shouldShowRequestRationale) {
+      return false;
+    }
+    // Unsupported on this OS (or never prompted): don't block.
+    return true;
   }
 
   Future<void> startHosting() async {
-    await stopEndpointsOnly();
     await _stopDiscoveryQuiet();
+    if (_hadConnection || connectedEndpointId != null) {
+      await stopEndpointsOnly();
+    }
     final allowed = await ensurePermissions();
     if (!allowed) return;
     await _startAdvertisingInternal();
@@ -109,26 +167,33 @@ class NearbyGameSession extends GameSession {
           : 'Failed to host';
       notifyListeners();
     } catch (e) {
-      status = 'Host error: $e';
+      status = _friendlyNearbyError('Host', e);
       notifyListeners();
     }
   }
 
   Future<void> startJoining() async {
-    await stopEndpointsOnly();
     await _stopAdvertisingQuiet();
+    await _stopDiscoveryQuiet();
+    // Avoid stopAllEndpoints on a cold join — it can leave Play Services in a
+    // bad state and surface as INTERNAL_ERROR (8) on startDiscovery.
+    if (_hadConnection || connectedEndpointId != null) {
+      await stopEndpointsOnly();
+      await Future<void>.delayed(const Duration(milliseconds: 250));
+    }
     final allowed = await ensurePermissions();
     if (!allowed) return;
     await _startDiscoveryInternal();
   }
 
-  Future<void> _startDiscoveryInternal() async {
+  Future<void> _startDiscoveryInternal({bool isRetry = false}) async {
     try {
       if (discovering) {
         try {
           await _nearby.stopDiscovery();
         } catch (_) {}
         discovering = false;
+        await Future<void>.delayed(const Duration(milliseconds: 200));
       }
       discovered.clear();
       discovering = await _nearby.startDiscovery(
@@ -150,9 +215,39 @@ class NearbyGameSession extends GameSession {
           : 'Failed to search';
       notifyListeners();
     } catch (e) {
-      status = 'Join error: $e';
+      final raw = '$e';
+      if (!isRetry &&
+          (raw.contains('INTERNAL_ERROR') ||
+              raw.contains('8:') ||
+              raw.contains('STATUS_ERROR'))) {
+        try {
+          await _nearby.stopDiscovery();
+        } catch (_) {}
+        discovering = false;
+        await Future<void>.delayed(const Duration(milliseconds: 500));
+        return _startDiscoveryInternal(isRetry: true);
+      }
+      status = _friendlyNearbyError('Join', e);
       notifyListeners();
     }
+  }
+
+  String _friendlyNearbyError(String action, Object e) {
+    final raw = '$e';
+    if (raw.contains('INTERNAL_ERROR') || raw.contains('8:')) {
+      return '$action failed (Nearby internal error). '
+          'Turn on Bluetooth and Location, wait a second, and try again. '
+          'If it keeps failing, update Google Play Services.';
+    }
+    if (raw.contains('MISSING_PERMISSION') || raw.contains('803')) {
+      return '$action failed: a Nearby permission is missing. '
+          'Open Settings → Apps → Blushcraft → Permissions and allow '
+          'Location and Nearby devices / Bluetooth.';
+    }
+    if (raw.contains('RADIO_ERROR') || raw.contains('8007')) {
+      return '$action failed: Bluetooth/Wi‑Fi radio error. Toggle Bluetooth off/on.';
+    }
+    return '$action error: $e';
   }
 
   /// After a drop: host keeps/restarts advertising without wiping session intent.
@@ -206,7 +301,7 @@ class NearbyGameSession extends GameSession {
         },
       );
     } catch (e) {
-      status = 'Connect error: $e';
+      status = _friendlyNearbyError('Connect', e);
       notifyListeners();
     }
   }
