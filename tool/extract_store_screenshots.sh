@@ -1,12 +1,11 @@
 #!/usr/bin/env bash
-# Extract Obtainium / store-profile stills from docs/screenshots/round-demo.mp4.
+# Extract Obtainium / store-profile stills from the recorded demo.
+# Prefers docs/screenshots/round-demo.mp4 (local record temp); falls back to
+# round-demo.gif which is what we keep in git.
 #
 # Usage (from repo root):
+#   python3 tool/record_round_demo.py   # writes gif (+ temp mp4)
 #   ./tool/extract_store_screenshots.sh
-#
-# By default every still (including home) is pulled from the demo video so
-# listing art stays in sync with the README GIF/MP4. Set KEEP_HOME=1 to leave
-# an existing curated store/01-home.png alone.
 #
 # Timestamps assume the tight-paced Playwright demo. Adjust if the recording
 # script changes (see tool/record_round_demo.py).
@@ -16,10 +15,15 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SHOTS="${ROOT}/docs/screenshots"
 STORE="${SHOTS}/store"
-DEMO="${SHOTS}/round-demo.mp4"
+MP4="${SHOTS}/round-demo.mp4"
+GIF="${SHOTS}/round-demo.gif"
 
-if [[ ! -f "$DEMO" ]]; then
-  echo "error: missing $DEMO — run tool/record_round_demo.py first" >&2
+if [[ -f "$MP4" ]]; then
+  DEMO="$MP4"
+elif [[ -f "$GIF" ]]; then
+  DEMO="$GIF"
+else
+  echo "error: missing $GIF (or temp $MP4) — run tool/record_round_demo.py first" >&2
   exit 1
 fi
 
@@ -32,7 +36,7 @@ extract() {
 }
 
 DUR="$(ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 "$DEMO" | cut -d. -f1)"
-echo "demo duration ~${DUR}s"
+echo "demo ($DEMO) duration ~${DUR}s"
 
 # Absolute times for the trimmed ~12s release demo (tool/record_round_demo.py).
 extract 1.0  "${STORE}/01-home.png"

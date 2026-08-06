@@ -1,15 +1,18 @@
 #!/usr/bin/env python3
-"""Record a tight-paced Blushcraft round demo (MP4 + GIF) for the README.
+"""Record a tight-paced Blushcraft round demo GIF for the README.
 
 Prereqs:
   1. Serve the app on :7357, e.g.
-       flutter build web --debug
+       flutter build web --release
        python3 -m http.server 7357 --directory build/web
   2. Playwright Chromium available (tool uses /tmp/blush_capture_venv if present).
 
 Usage (from repo root):
   python3 tool/record_round_demo.py
   ./tool/extract_store_screenshots.sh
+
+Writes round-demo.gif (committed). A temp round-demo.mp4 is left for sharper
+store still extraction; delete it before commit if present.
 """
 
 from __future__ import annotations
@@ -282,8 +285,8 @@ async def main() -> None:
             ],
             text=True,
         ).strip()
-        print(f"wrote {mp4} duration={dur}s size={mp4.stat().st_size}")
         print(f"wrote {gif} size={gif.stat().st_size}")
+        print(f"temp {mp4} kept for extract_store_screenshots.sh (gitignored)")
 
 
 if __name__ == "__main__":

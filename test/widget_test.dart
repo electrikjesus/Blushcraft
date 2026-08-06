@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'dart:io';
 import 'dart:math';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -18,14 +20,25 @@ void main() {
     );
   });
 
-  test('StatementCard with single blank', () {
+  test('StatementCard normalizes mid-sentence choice casing', () {
     const s = StatementCard(
       id: 1,
       text: 'I love it most when you look at me like _______________.',
     );
     expect(
       s.fillWith('A slow dance in the kitchen.'),
-      'I love it most when you look at me like A slow dance in the kitchen..',
+      'I love it most when you look at me like a slow dance in the kitchen.',
+    );
+  });
+
+  test('StatementCard keeps sentence-initial choice casing', () {
+    const s = StatementCard(
+      id: 26,
+      text: '_______________ makes my heart race.',
+    );
+    expect(
+      s.fillWith('A slow dance in the kitchen.'),
+      'A slow dance in the kitchen makes my heart race.',
     );
   });
 
@@ -107,4 +120,117 @@ void main() {
     expect(CardRepository.labelForRiskay(0.5), 'Blush');
     expect(CardRepository.labelForRiskay(1.0), 'Riskay');
   });
+
+  test('Deck statements use NP/gerund blank lead-ins', () {
+    const packs = [
+      'assets/cards.json',
+      'assets/cards_fresh_start.json',
+    ];
+    for (final path in packs) {
+      final json =
+          jsonDecode(File(path).readAsStringSync()) as Map<String, dynamic>;
+      final statements = json['statements'] as List<dynamic>;
+      for (final raw in statements) {
+        final s = raw as Map<String, dynamic>;
+        final id = s['id'];
+        final text = s['text'] as String;
+        final issues = blankLeadInIssues(text);
+        expect(
+          issues,
+          isEmpty,
+          reason: '$path id=$id: $text → $issues',
+        );
+      }
+    }
+  });
+}
+
+/// Words that may precede `to ___` when the blank is an NP/gerund slot.
+const _allowedToLeadWords = {
+  'comes',
+  'asleep',
+  'related',
+  'try',
+  'reacts',
+  'listen',
+  'listens',
+  'accustomed',
+  'used',
+  'due',
+  'up',
+  'according',
+};
+
+/// Returns authoring-rule violations for [text], or empty if OK.
+List<String> blankLeadInIssues(String text) {
+  final issues = <String>[];
+  final blanks = RegExp(r'_+').allMatches(text).toList();
+  if (blanks.length > 1) {
+    issues.add('multiple_blanks');
+  }
+  if (blanks.isEmpty) {
+    issues.add('missing_blank');
+    return issues;
+  }
+
+  for (final m in blanks) {
+    final before = text.substring(0, m.start);
+    final words = before
+        .trimRight()
+        .split(RegExp(r'\s+'))
+        .where((w) => w.isNotEmpty)
+        .map((w) => w.replaceAll(RegExp(r"[^\w']"), '').toLowerCase())
+        .where((w) => w.isNotEmpty)
+        .toList();
+    if (words.isEmpty) continue; // sentence-initial blank is OK
+
+    final last = words.last;
+    final prev = words.length >= 2 ? words[words.length - 2] : null;
+
+    if (last == 'to' && (prev == null || !_allowedToLeadWords.contains(prev))) {
+      issues.add('bare_infinitive_to');
+    }
+    if (last == 'you' || last == 'we') {
+      issues.add('bare_pronoun_verb');
+    }
+    if ({
+      "won't",
+      'will',
+      "can't",
+      'cannot',
+      'should',
+      'could',
+      'would',
+      "didn't",
+      "don't",
+      'and',
+    }.contains(last)) {
+      issues.add('bare_aux_or_and');
+    }
+    if (last == 'incredibly') {
+      issues.add('adjective_only');
+    }
+    if (last == 'your') {
+      issues.add('bare_possessive_your');
+    }
+    if (prev == 'when' && last == 'you') {
+      issues.add('when_you_verb');
+    }
+    if (prev == 'way' && last == 'you') {
+      issues.add('way_you_verb');
+    }
+    if (last == 'who') {
+      issues.add('who_verb');
+    }
+    if (prev == 'whether' && last == 'you') {
+      issues.add('whether_you_verb');
+    }
+    if (prev == 'that' && last == 'you') {
+      issues.add('that_you_verb');
+    }
+    if (prev == 'hoping' && last == 'you') {
+      issues.add('hoping_you_verb');
+    }
+  }
+  return issues;
 }

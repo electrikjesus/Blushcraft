@@ -12,12 +12,12 @@
     },
     {
       "id": 3,
-      "text": "Just thinking about the way you _______________ drives me crazy.",
+      "text": "Just thinking about _______________ drives me crazy.",
       "heat": "default"
     },
     {
       "id": 4,
-      "text": "I want you to _______________ me right now.",
+      "text": "Right now I want _______________ from you.",
       "heat": "default"
     },
     {
@@ -32,22 +32,22 @@
     },
     {
       "id": 7,
-      "text": "I'm completely mesmerized when you _______________.",
+      "text": "I'm completely mesmerized by _______________.",
       "heat": "default"
     },
     {
       "id": 8,
-      "text": "The way you _______________ is driving me wild.",
+      "text": "Your talent for _______________ is driving me wild.",
       "heat": "default"
     },
     {
       "id": 9,
-      "text": "You look incredibly _______________ in those clothes.",
+      "text": "In those clothes you look like _______________.",
       "heat": "default"
     },
     {
       "id": 10,
-      "text": "I'm dreaming about the time we _______________.",
+      "text": "I'm dreaming about _______________.",
       "heat": "default"
     },
     {
@@ -57,12 +57,12 @@
     },
     {
       "id": 12,
-      "text": "Your touch makes me _______________.",
+      "text": "Your touch leaves me craving _______________.",
       "heat": "default"
     },
     {
       "id": 13,
-      "text": "I can't wait to _______________ you tonight.",
+      "text": "Tonight I can't wait for _______________.",
       "heat": "default"
     },
     {
@@ -72,7 +72,7 @@
     },
     {
       "id": 15,
-      "text": "If you _______________ right now, I'd _______________.",
+      "text": "If we started with _______________ right now, I'd melt.",
       "heat": "default"
     },
     {
@@ -82,7 +82,7 @@
     },
     {
       "id": 17,
-      "text": "I'm imagining you _______________ right now.",
+      "text": "I'm imagining _______________ right now.",
       "heat": "default"
     },
     {
@@ -92,32 +92,32 @@
     },
     {
       "id": 19,
-      "text": "We should _______________ more often.",
+      "text": "We should make more room for _______________.",
       "heat": "default"
     },
     {
       "id": 20,
-      "text": "I love it when you _______________.",
+      "text": "I love _______________ with you.",
       "heat": "default"
     },
     {
       "id": 21,
-      "text": "Let's do something _______________ tonight.",
+      "text": "Let's plan something involving _______________ tonight.",
       "heat": "default"
     },
     {
       "id": 22,
-      "text": "Your _______________ is driving me crazy.",
+      "text": "Your gift for _______________ is driving me crazy.",
       "heat": "default"
     },
     {
       "id": 23,
-      "text": "I want to _______________ you until _______________.",
+      "text": "I want _______________ with you tonight.",
       "heat": "default"
     },
     {
       "id": 24,
-      "text": "You look so _______________ when _______________.",
+      "text": "You look so into _______________.",
       "heat": "default"
     },
     {
@@ -127,32 +127,32 @@
     },
     {
       "id": 26,
-      "text": "The way you _______________ makes my heart race.",
+      "text": "_______________ makes my heart race.",
       "heat": "default"
     },
     {
       "id": 27,
-      "text": "I have a secret _______________.",
+      "text": "I have a secret about _______________.",
       "heat": "default"
     },
     {
       "id": 28,
-      "text": "Promise me you won't _______________.",
+      "text": "Promise me you won't skip _______________.",
       "heat": "default"
     },
     {
       "id": 29,
-      "text": "You're my favorite _______________.",
+      "text": "You're my favorite kind of _______________.",
       "heat": "default"
     },
     {
       "id": 30,
-      "text": "I'm ready to _______________ right now.",
+      "text": "I'm ready for _______________ right now.",
       "heat": "default"
     },
     {
       "id": 1001,
-      "text": "Holding your hand makes me feel _______________.",
+      "text": "Holding your hand feels like _______________.",
       "heat": "innocent"
     },
     {
@@ -162,12 +162,12 @@
     },
     {
       "id": 1003,
-      "text": "You always make me smile when you _______________.",
+      "text": "You always make me smile with _______________.",
       "heat": "innocent"
     },
     {
       "id": 1004,
-      "text": "I feel safest when we _______________.",
+      "text": "I feel safest with _______________.",
       "heat": "innocent"
     },
     {
@@ -187,7 +187,7 @@
     },
     {
       "id": 1008,
-      "text": "You spoil me when you _______________.",
+      "text": "You spoil me with _______________.",
       "heat": "innocent"
     },
     {
@@ -207,7 +207,7 @@
     },
     {
       "id": 1012,
-      "text": "You look adorable when _______________.",
+      "text": "You look adorable during _______________.",
       "heat": "innocent"
     },
     {
@@ -242,17 +242,17 @@
     },
     {
       "id": 1019,
-      "text": "We're at our sweetest when we _______________.",
+      "text": "We're at our sweetest during _______________.",
       "heat": "innocent"
     },
     {
       "id": 1020,
-      "text": "Promise me we'll always _______________.",
+      "text": "Promise me we'll always make time for _______________.",
       "heat": "innocent"
     },
     {
       "id": 1021,
-      "text": "I feel lucky because _______________.",
+      "text": "I feel lucky because of _______________.",
       "heat": "innocent"
     },
     {
@@ -262,12 +262,12 @@
     },
     {
       "id": 3001,
-      "text": "I want your hands _______________ tonight.",
+      "text": "I want your hands busy with _______________ tonight.",
       "heat": "provocative"
     },
     {
       "id": 3002,
-      "text": "Don't stop until I _______________.",
+      "text": "Don't stop until _______________.",
       "heat": "provocative"
     },
     {
@@ -282,7 +282,7 @@
     },
     {
       "id": 3005,
-      "text": "I'd let you _______________ if nobody was watching.",
+      "text": "I'd let you have _______________ if nobody was watching.",
       "heat": "provocative"
     },
     {
@@ -297,37 +297,37 @@
     },
     {
       "id": 3008,
-      "text": "Pin me down and _______________.",
+      "text": "Pin me down for _______________.",
       "heat": "provocative"
     },
     {
       "id": 3009,
-      "text": "You drive me crazy when you _______________ like that.",
+      "text": "You drive me crazy with _______________ like that.",
       "heat": "provocative"
     },
     {
       "id": 3010,
-      "text": "Take me somewhere private and _______________.",
+      "text": "Take me somewhere private for _______________.",
       "heat": "provocative"
     },
     {
       "id": 3011,
-      "text": "I can't keep quiet if you _______________.",
+      "text": "I can't keep quiet during _______________.",
       "heat": "provocative"
     },
     {
       "id": 3012,
-      "text": "My body reacts when you _______________.",
+      "text": "My body reacts to _______________.",
       "heat": "provocative"
     },
     {
       "id": 3013,
-      "text": "Leave a mark where _______________.",
+      "text": "Leave a mark during _______________.",
       "heat": "provocative"
     },
     {
       "id": 3014,
-      "text": "I dare you to _______________ right now.",
+      "text": "Right now I dare you to try _______________.",
       "heat": "provocative"
     },
     {
@@ -357,7 +357,7 @@
     },
     {
       "id": 3020,
-      "text": "Pull me closer when _______________.",
+      "text": "Pull me closer during _______________.",
       "heat": "provocative"
     },
     {

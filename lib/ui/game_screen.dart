@@ -14,6 +14,7 @@ import '../../networking/nearby_game_session.dart';
 import '../../networking/webrtc/webrtc_qr_session.dart';
 import '../../share/share_service.dart';
 import '../../state/game_controller.dart';
+import 'av_consent.dart';
 import 'theme.dart';
 import 'widgets/card_face.dart';
 import 'widgets/hand_strip.dart';
@@ -109,17 +110,36 @@ class _GameScreenState extends State<GameScreen> {
     };
     _av.addListener(_onAvChanged);
     _webrtc?.addListener(_onWebRtcChanged);
-    unawaited(_loadAvLayoutPref());
+    unawaited(_loadAvPrefs());
     _onGame();
   }
 
-  Future<void> _loadAvLayoutPref() async {
+  Future<void> _loadAvPrefs() async {
     final prefs = await SharedPreferences.getInstance();
+    _avConsentGiven = await loadAvConsentGiven();
+    final wants = await loadAvWantFlags();
     if (!mounted) return;
     setState(() {
       _avLayoutPref =
           ReactionAvLayoutPref.fromStorage(prefs.getString(_avLayoutPrefKey));
     });
+    if (!_avConsentGiven) return;
+    if (wants.camera || wants.mic) {
+      if (wants.camera && !_useWebRtcMedia) {
+        await _av.init();
+      }
+      if (wants.camera) await _av.setCameraEnabled(true);
+      if (wants.mic) await _av.setMicEnabled(true);
+      if (mounted) setState(() {});
+      _onGame();
+    }
+  }
+
+  Future<void> _persistAvWants() async {
+    await saveAvWantFlags(
+      camera: _av.cameraEnabled,
+      mic: _av.micEnabled,
+    );
   }
 
   Future<void> _cycleAvLayout() async {
@@ -198,44 +218,9 @@ class _GameScreenState extends State<GameScreen> {
 
   Future<bool> _confirmAvConsent() async {
     if (_avConsentGiven) return true;
-    final agreed = await showModalBottomSheet<bool>(
-      context: context,
-      showDragHandle: true,
-      builder: (context) {
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(24, 8, 24, 28),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text('Share reaction camera?', style: BlushTheme.display(22)),
-              const SizedBox(height: 12),
-              Text(
-                'Reaction video and mic are optional. If you allow them, your '
-                'partner can see and hear you during the round. You can turn '
-                'either off anytime.',
-                style: BlushTheme.body(15),
-              ),
-              const SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: () => Navigator.pop(context, true),
-                child: const Text('Allow'),
-              ),
-              const SizedBox(height: 8),
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('Not now'),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-    if (agreed == true) {
-      _avConsentGiven = true;
-      return true;
-    }
-    return false;
+    final ok = await showAvConsentSheet(context);
+    if (ok) _avConsentGiven = true;
+    return ok;
   }
 
   Future<void> _publishPrivacy() async {
@@ -294,6 +279,7 @@ class _GameScreenState extends State<GameScreen> {
       audio: _av.micEnabled,
     );
     await _publishPrivacy();
+    await _persistAvWants();
   }
 
   Future<void> _toggleMic() async {
@@ -309,6 +295,7 @@ class _GameScreenState extends State<GameScreen> {
       audio: _av.micEnabled,
     );
     await _publishPrivacy();
+    await _persistAvWants();
   }
 
   @override
@@ -420,14 +407,16 @@ class _GameScreenState extends State<GameScreen> {
           onToggleCamera: _toggleCamera,
           onToggleMic: _toggleMic,
           onCycleLayout: _cycleAvLayout,
+          expand: layout == ReactionAvLayout.strip,
         );
 
         if (layout == ReactionAvLayout.strip) {
+          // Phone strip grows into leftover height so controls sit at the bottom.
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              panel,
-              Expanded(child: child),
+              Expanded(child: panel),
+              Flexible(fit: FlexFit.loose, child: child),
             ],
           );
         }
@@ -568,18 +557,14 @@ class _GameScreenState extends State<GameScreen> {
         }
 
         return Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: statement,
             ),
             const SizedBox(height: 12),
-            Expanded(
-              child: Align(
-                alignment: Alignment.bottomCenter,
-                child: hand,
-              ),
-            ),
+            hand,
             const SizedBox(height: 8),
           ],
         );
@@ -598,6 +583,7 @@ class _GameScreenState extends State<GameScreen> {
         '';
 
     return ListView(
+      shrinkWrap: true,
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
       children: [
         Text(
@@ -733,6 +719,7 @@ class _GameScreenState extends State<GameScreen> {
 
   Widget _reactionPhase(GameState state) {
     return ListView(
+      shrinkWrap: true,
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
       children: [
         Text(
@@ -741,7 +728,7 @@ class _GameScreenState extends State<GameScreen> {
         ),
         const SizedBox(height: 8),
         Text(
-          'Watch your partner in the corner; genuine reactions count.',
+          'Watch your partner in the preview; genuine reactions count.',
           style: BlushTheme.body(13, color: BlushTheme.inkMuted),
         ),
         const SizedBox(height: 20),
@@ -797,6 +784,7 @@ class _GameScreenState extends State<GameScreen> {
     return Padding(
       padding: const EdgeInsets.all(24),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
@@ -815,7 +803,7 @@ class _GameScreenState extends State<GameScreen> {
               label: 'Share combo',
             ),
           ],
-          const Spacer(),
+          const SizedBox(height: 24),
           if (widget.controller.isHost || widget.controller.dryRun)
             ElevatedButton(
               onPressed: () => widget.controller.nextRound(),

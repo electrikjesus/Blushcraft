@@ -13,9 +13,9 @@ This is the source of truth for prebuilt binaries.
 
 ## Screenshots for listings
 
-README embeds the animated demo (`docs/screenshots/round-demo.gif` / `.mp4`).
+README embeds the animated demo (`docs/screenshots/round-demo.gif`).
 
-Static stills for Obtainium, F-Droid, or other profiles are generated from that video:
+Static stills for Obtainium, F-Droid, or other profiles are generated from that demo:
 
 ```bash
 ./tool/extract_store_screenshots.sh

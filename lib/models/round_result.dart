@@ -1,3 +1,5 @@
+import 'card.dart';
+
 class RoundCombo {
   const RoundCombo({
     required this.statementText,
@@ -35,7 +37,11 @@ class RoundCombo {
     return statement.replaceAllMapped(blank, (m) {
       if (first) {
         first = false;
-        return choice;
+        return StatementCard.normalizeChoiceForBlank(
+          choice,
+          sentenceInitial:
+              StatementCard.isSentenceInitialBlank(statement, m.start),
+        );
       }
       return '…';
     });

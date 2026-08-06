@@ -71,7 +71,8 @@ enum ReactionAvLayoutPref {
 
 /// Peer + self cameras with mic/camera toggles.
 ///
-/// [ReactionAvLayout.strip] is a short horizontal bar for phones.
+/// [ReactionAvLayout.strip] is a horizontal bar for phones; with [expand] it
+/// fills leftover vertical space so game controls can sit at the bottom.
 /// [ReactionAvLayout.side] is the classic top-right PiP for wider screens.
 class ReactionAvPanel extends StatelessWidget {
   const ReactionAvPanel({
@@ -85,6 +86,7 @@ class ReactionAvPanel extends StatelessWidget {
     required this.onToggleCamera,
     required this.onToggleMic,
     required this.onCycleLayout,
+    this.expand = false,
   });
 
   final ReactionAvController av;
@@ -97,10 +99,14 @@ class ReactionAvPanel extends StatelessWidget {
   final VoidCallback onToggleMic;
   final VoidCallback onCycleLayout;
 
+  /// When true (strip only), fill the parent instead of a fixed short bar.
+  final bool expand;
+
   static const double sideWidth = 132;
   static const double sidePeerHeight = 168;
   static const double stripHeight = 88;
   static const double selfSize = 48;
+  static const double selfSizeExpanded = 72;
 
   /// Space reserved when overlaying a side panel on narrow content.
   static double sideReserveWidth(ReactionAvLayout layout) =>
@@ -112,38 +118,40 @@ class ReactionAvPanel extends StatelessWidget {
   }
 
   Widget _strip() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 12, 8),
-      child: SizedBox(
-        height: stripHeight,
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Expanded(
-              child: Stack(
-                children: [
-                  Positioned.fill(child: _peerFrame(borderRadius: 14)),
-                  Positioned(
-                    top: 4,
-                    right: 4,
-                    child: _chip(
-                      icon: layoutPref.icon,
-                      on: true,
-                      onTap: onCycleLayout,
-                      tooltip: '${layoutPref.label} (tap to change)',
-                      compact: true,
-                    ),
-                  ),
-                ],
+    final self = expand ? selfSizeExpanded : selfSize;
+    final row = Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Expanded(
+          child: Stack(
+            children: [
+              Positioned.fill(child: _peerFrame(borderRadius: expand ? 18 : 14)),
+              Positioned(
+                top: 6,
+                right: 6,
+                child: _chip(
+                  icon: layoutPref.icon,
+                  on: true,
+                  onTap: onCycleLayout,
+                  tooltip: '${layoutPref.label} (tap to change)',
+                  compact: true,
+                ),
               ),
-            ),
-            const SizedBox(width: 10),
-            Center(child: _selfTile()),
-            const SizedBox(width: 8),
-            _controls(vertical: true),
-          ],
+            ],
+          ),
         ),
-      ),
+        const SizedBox(width: 10),
+        Center(child: _selfTile(size: self)),
+        const SizedBox(width: 8),
+        _controls(vertical: true),
+      ],
+    );
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(16, 0, 12, expand ? 12 : 8),
+      child: expand
+          ? row
+          : SizedBox(height: stripHeight, child: row),
     );
   }
 
@@ -167,7 +175,7 @@ class ReactionAvPanel extends StatelessWidget {
                 Positioned(
                   right: 6,
                   bottom: -selfSize * 0.35,
-                  child: _selfTile(),
+                  child: _selfTile(size: selfSize),
                 ),
               ],
             ),
@@ -210,7 +218,7 @@ class ReactionAvPanel extends StatelessWidget {
     );
   }
 
-  Widget _selfTile() {
+  Widget _selfTile({double size = selfSize}) {
     Widget child;
     if (localVideo != null && av.cameraEnabled) {
       child = localVideo!;
@@ -224,8 +232,8 @@ class ReactionAvPanel extends StatelessWidget {
     }
 
     return Container(
-      width: selfSize,
-      height: selfSize,
+      width: size,
+      height: size,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         border: Border.all(color: Colors.white, width: 2),

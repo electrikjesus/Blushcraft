@@ -5,6 +5,7 @@ import '../../networking/nearby_game_session.dart';
 import '../../state/game_controller.dart';
 import 'theme.dart';
 import 'widgets/game_mode_picker.dart';
+import 'widgets/lobby_av_setup.dart';
 import 'widgets/riskay_slider.dart';
 
 class LobbyScreen extends StatelessWidget {
@@ -107,6 +108,11 @@ class LobbyScreen extends StatelessWidget {
                       style: BlushTheme.body(12, color: BlushTheme.inkMuted),
                     ),
                   ),
+                const SizedBox(height: 28),
+                LobbyAvSetup(
+                  localPlayerId: controller.localPlayerId,
+                  session: session,
+                ),
                 if (nearby != null &&
                     !controller.isHost &&
                     discovered.isNotEmpty) ...[

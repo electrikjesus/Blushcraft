@@ -8,19 +8,13 @@ First to **5** Statement points wins and picks the prize.
 
 ## Round demo
 
-Practice round in ~12 seconds: scroll the hand, submit, reveal, reaction check, score a point. Tap the preview for the full MP4.
+Practice round in ~12 seconds: scroll the hand, submit, reveal, reaction check, score a point.
 
 <p align="center">
-  <a href="docs/screenshots/round-demo.mp4">
-    <img src="docs/screenshots/round-demo.gif" alt="Animated Blushcraft round demo" width="280" />
-  </a>
+  <img src="docs/screenshots/round-demo.gif" alt="Animated Blushcraft round demo" width="280" />
 </p>
 
-<p align="center">
-  <a href="docs/screenshots/round-demo.mp4"><strong>Play round-demo.mp4</strong></a>
-</p>
-
-Store / Obtainium listing stills (pulled from the demo video) live in [`docs/screenshots/store/`](docs/screenshots/store/). Regenerate with `./tool/extract_store_screenshots.sh` after recording a new demo.
+Store / Obtainium listing stills (pulled from the demo) live in [`docs/screenshots/store/`](docs/screenshots/store/). Regenerate with `tool/record_round_demo.py` then `./tool/extract_store_screenshots.sh` after recording a new demo.
 
 Built with **Flutter** (Android first, iOS-ready). Local multiplayer uses Google **Nearby Connections** (Bluetooth / Wi-Fi). Online play uses **WebRTC + QR** so round data stays on the two phones.
 
@@ -85,9 +79,23 @@ assets/cards.json
 ## Cards
 
 Source CSV: `Blush Card Game - Print Template - Blush Card Game - Print Template.csv`
-Runtime deck: `assets/cards.json` (default + innocent + provocative packs)
 
-Statements with multiple blanks fill the first blank with the chosen Choice and show `…` for extras.
+Runtime decks:
+
+- `assets/cards.json` — Romantic Partner (default + innocent + provocative)
+- `assets/cards_fresh_start.json` — Fresh Start (same heat packs)
+
+### Blank form (authoring rule)
+
+Every statement blank is a single slot for a **noun phrase or gerund phrase** (a thing / moment / act)—the same shapes as Choice cards (`A slow dance…`, `Whispering something wicked.`, `a chaotic good playlist`).
+
+**Prefer lead-ins like:** `about ___`, `of ___`, `is ___`, `like ___`, `at ___`, `by ___`, `for ___`, `with ___`, `during ___`, `involving ___`, `when it comes to ___`, `filled with ___`.
+
+**Avoid:** bare infinitive after `to ___`, bare verb after `you` / `we` / `won't` / `and ___`, adjective-only slots (`incredibly ___`), and bare possessives (`Your ___`).
+
+Statements with multiple blanks fill the first blank with the chosen Choice and show `…` for extras; prefer writing **one** blank when editing.
+
+`fillWith` trims the choice, strips a trailing period, and lowercases the first letter when the blank is mid-sentence.
 
 ### Riskay slider
 
@@ -134,7 +142,7 @@ git push origin v0.2.0   # triggers Create Release workflow
 Refresh media before tagging so the README stays current:
 
 1. `flutter build web --release && python3 -m http.server 7357 --directory build/web`
-2. `python3 tool/record_round_demo.py` (needs Playwright; writes `round-demo.mp4` + `.gif`)
+2. `python3 tool/record_round_demo.py` (needs Playwright; writes `round-demo.gif`)
 3. `./tool/extract_store_screenshots.sh` to refresh Obtainium / store stills in `docs/screenshots/store/`.
 
 ## Online play

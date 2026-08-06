@@ -7,12 +7,12 @@
     },
     {
       "id": 2,
-      "text": "You seem like the kind of person who _______________.",
+      "text": "You seem like the kind of person who's into _______________.",
       "heat": "default"
     },
     {
       "id": 3,
-      "text": "I'm weirdly curious whether you _______________.",
+      "text": "I'm weirdly curious about whether you're into _______________.",
       "heat": "default"
     },
     {
@@ -27,12 +27,12 @@
     },
     {
       "id": 6,
-      "text": "I bet your friends would say you're _______________.",
+      "text": "I bet your friends would say you're all about _______________.",
       "heat": "default"
     },
     {
       "id": 7,
-      "text": "Something about you makes me want to _______________.",
+      "text": "Something about you makes me want _______________.",
       "heat": "default"
     },
     {
@@ -52,7 +52,7 @@
     },
     {
       "id": 11,
-      "text": "I have a hunch that you _______________.",
+      "text": "I have a hunch that you're into _______________.",
       "heat": "default"
     },
     {
@@ -62,12 +62,12 @@
     },
     {
       "id": 13,
-      "text": "You strike me as someone who secretly _______________.",
+      "text": "You strike me as someone who secretly loves _______________.",
       "heat": "default"
     },
     {
       "id": 14,
-      "text": "I'm low-key hoping you _______________.",
+      "text": "I'm low-key hoping you're into _______________.",
       "heat": "default"
     },
     {
@@ -82,12 +82,12 @@
     },
     {
       "id": 17,
-      "text": "I keep wondering what you'd do if _______________.",
+      "text": "I keep wondering what you'd do with _______________.",
       "heat": "default"
     },
     {
       "id": 18,
-      "text": "My first impression update: you're _______________.",
+      "text": "My first impression update: you're giving _______________.",
       "heat": "default"
     },
     {
@@ -102,7 +102,7 @@
     },
     {
       "id": 21,
-      "text": "There's a version of you I haven't met yet that _______________.",
+      "text": "There's a version of you I haven't met yet that lives for _______________.",
       "heat": "default"
     },
     {
@@ -122,7 +122,7 @@
     },
     {
       "id": 25,
-      "text": "I'd trust you faster if I knew _______________.",
+      "text": "I'd trust you faster if I knew about _______________.",
       "heat": "default"
     },
     {
@@ -132,7 +132,7 @@
     },
     {
       "id": 27,
-      "text": "I'm lowkey intimidated by how _______________.",
+      "text": "I'm lowkey intimidated by how good you are at _______________.",
       "heat": "default"
     },
     {
@@ -157,7 +157,7 @@
     },
     {
       "id": 32,
-      "text": "On a perfect lazy morning, you _______________.",
+      "text": "On a perfect lazy morning, you're all about _______________.",
       "heat": "innocent"
     },
     {
@@ -177,7 +177,7 @@
     },
     {
       "id": 36,
-      "text": "In group chats, you're the one who _______________.",
+      "text": "In group chats, you're the one who brings up _______________.",
       "heat": "innocent"
     },
     {
@@ -227,7 +227,7 @@
     },
     {
       "id": 46,
-      "text": "You always lose track of time when _______________.",
+      "text": "You always lose track of time during _______________.",
       "heat": "innocent"
     },
     {
@@ -237,7 +237,7 @@
     },
     {
       "id": 48,
-      "text": "You were that kid who _______________.",
+      "text": "You were that kid who lived for _______________.",
       "heat": "innocent"
     },
     {
@@ -277,7 +277,7 @@
     },
     {
       "id": 56,
-      "text": "You get flustered when someone _______________.",
+      "text": "You get flustered when someone brings up _______________.",
       "heat": "provocative"
     },
     {
@@ -297,7 +297,7 @@
     },
     {
       "id": 60,
-      "text": "You're most dangerous when you're _______________.",
+      "text": "You're most dangerous when you're into _______________.",
       "heat": "provocative"
     },
     {
@@ -307,7 +307,7 @@
     },
     {
       "id": 62,
-      "text": "You've fantasized about walking into a room and _______________.",
+      "text": "You've fantasized about walking into a room for _______________.",
       "heat": "provocative"
     },
     {
@@ -327,7 +327,7 @@
     },
     {
       "id": 66,
-      "text": "You're most attractive when you _______________.",
+      "text": "You're most attractive during _______________.",
       "heat": "provocative"
     },
     {

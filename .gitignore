@@ -50,3 +50,7 @@ keystore.properties
 *.jks
 *.keystore
 android/app/release.keystore
+
+# Local demo record temp (README ships GIF only)
+docs/screenshots/round-demo.mp4
+docs/screenshots/_video_tmp/

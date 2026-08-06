@@ -52,6 +52,31 @@ class StatementCard {
         'heat': heat.toJson(),
       };
 
+  /// Normalize choice text for insertion into a blank.
+  ///
+  /// Trims, strips a trailing period, and lowercases the first letter when the
+  /// blank is not sentence-initial.
+  static String normalizeChoiceForBlank(
+    String choiceText, {
+    required bool sentenceInitial,
+  }) {
+    var t = choiceText.trim();
+    if (t.endsWith('.')) {
+      t = t.substring(0, t.length - 1).trimRight();
+    }
+    if (!sentenceInitial && t.isNotEmpty) {
+      t = '${t[0].toLowerCase()}${t.substring(1)}';
+    }
+    return t;
+  }
+
+  /// Whether [blankStart] in [statement] begins a sentence.
+  static bool isSentenceInitialBlank(String statement, int blankStart) {
+    final before = statement.substring(0, blankStart);
+    final trimmed = before.trimRight();
+    return trimmed.isEmpty || trimmed.endsWith('.');
+  }
+
   /// Fill blanks (`_______________`) with [choiceText]. Extra blanks become "…".
   String fillWith(String choiceText) {
     final blank = RegExp(r'_+');
@@ -59,7 +84,10 @@ class StatementCard {
     return text.replaceAllMapped(blank, (match) {
       if (remaining) {
         remaining = false;
-        return choiceText;
+        return normalizeChoiceForBlank(
+          choiceText,
+          sentenceInitial: isSentenceInitialBlank(text, match.start),
+        );
       }
       return '…';
     });

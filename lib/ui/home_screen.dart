@@ -5,6 +5,8 @@ import 'theme.dart';
 import 'widgets/game_mode_picker.dart';
 import 'widgets/riskay_slider.dart';
 
+enum _PlayTransport { nearby, online }
+
 class HomeScreen extends StatefulWidget {
   const HomeScreen({
     super.key,
@@ -43,6 +45,7 @@ class _HomeScreenState extends State<HomeScreen>
     with SingleTickerProviderStateMixin {
   late final TextEditingController _name;
   late final AnimationController _pulse;
+  _PlayTransport _transport = _PlayTransport.nearby;
 
   @override
   void initState() {
@@ -63,6 +66,24 @@ class _HomeScreenState extends State<HomeScreen>
 
   String get _trimmed =>
       _name.text.trim().isEmpty ? 'Player' : _name.text.trim();
+
+  bool get _online => _transport == _PlayTransport.online;
+
+  void _onHost() {
+    if (_online) {
+      widget.onHostOnline(_trimmed);
+    } else {
+      widget.onHost(_trimmed);
+    }
+  }
+
+  void _onJoin() {
+    if (_online) {
+      widget.onJoinOnline(_trimmed);
+    } else {
+      widget.onJoin(_trimmed);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -151,36 +172,66 @@ class _HomeScreenState extends State<HomeScreen>
                         ),
                         const SizedBox(height: 24),
                         Text(
-                          'Nearby (same room)',
+                          'Play over',
                           style: BlushTheme.body(13, color: BlushTheme.inkMuted),
                         ),
                         const SizedBox(height: 8),
-                        ElevatedButton(
-                          onPressed: () => widget.onHost(_trimmed),
-                          child: const Text('Host nearby'),
-                        ),
-                        const SizedBox(height: 12),
-                        OutlinedButton(
-                          onPressed: () => widget.onJoin(_trimmed),
-                          child: const Text('Join nearby'),
-                        ),
-                        const SizedBox(height: 20),
-                        Text(
-                          'Online (QR / internet)',
-                          style: BlushTheme.body(13, color: BlushTheme.inkMuted),
-                        ),
-                        const SizedBox(height: 8),
-                        ElevatedButton(
-                          onPressed: () => widget.onHostOnline(_trimmed),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: BlushTheme.roseDeep,
+                        SegmentedButton<_PlayTransport>(
+                          segments: const [
+                            ButtonSegment(
+                              value: _PlayTransport.nearby,
+                              label: Text('Nearby'),
+                              icon: Icon(Icons.wifi_tethering, size: 18),
+                            ),
+                            ButtonSegment(
+                              value: _PlayTransport.online,
+                              label: Text('Online'),
+                              icon: Icon(Icons.qr_code_2, size: 18),
+                            ),
+                          ],
+                          selected: {_transport},
+                          onSelectionChanged: (next) {
+                            if (next.isEmpty) return;
+                            setState(() => _transport = next.first);
+                          },
+                          style: ButtonStyle(
+                            foregroundColor:
+                                WidgetStateProperty.resolveWith((states) {
+                              if (states.contains(WidgetState.selected)) {
+                                return Colors.white;
+                              }
+                              return BlushTheme.roseDeep;
+                            }),
+                            backgroundColor:
+                                WidgetStateProperty.resolveWith((states) {
+                              if (states.contains(WidgetState.selected)) {
+                                return BlushTheme.rose;
+                              }
+                              return BlushTheme.cardFace;
+                            }),
                           ),
-                          child: const Text('Host online'),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          _online
+                              ? 'QR invite over the internet (WebRTC).'
+                              : 'Same room via Bluetooth / Wi-Fi.',
+                          style: BlushTheme.body(13, color: BlushTheme.inkMuted),
+                        ),
+                        const SizedBox(height: 16),
+                        ElevatedButton(
+                          onPressed: _onHost,
+                          style: _online
+                              ? ElevatedButton.styleFrom(
+                                  backgroundColor: BlushTheme.roseDeep,
+                                )
+                              : null,
+                          child: Text(_online ? 'Host online' : 'Host nearby'),
                         ),
                         const SizedBox(height: 12),
                         OutlinedButton(
-                          onPressed: () => widget.onJoinOnline(_trimmed),
-                          child: const Text('Join online'),
+                          onPressed: _onJoin,
+                          child: Text(_online ? 'Join online' : 'Join nearby'),
                         ),
                         const SizedBox(height: 12),
                         TextButton(
