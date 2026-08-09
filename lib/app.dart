@@ -18,6 +18,7 @@ import 'ui/online_host_qr_screen.dart';
 import 'ui/online_join_qr_screen.dart';
 import 'ui/stats_screen.dart';
 import 'ui/theme.dart';
+import 'util/blush_log.dart';
 
 class BlushcraftApp extends StatelessWidget {
   const BlushcraftApp({super.key});
@@ -169,15 +170,19 @@ class _AppRootState extends State<AppRoot> {
 
   /// System back: game → lobby → home; online pairing cancels to home.
   void _onSystemBack() {
+    final from = _screen;
     switch (_screen) {
       case AppScreen.home:
+        blushLog('Nav', 'system back on home (allow exit)');
         return;
       case AppScreen.game:
+        blushLog('Nav', 'system back game → lobby');
         setState(() => _screen = AppScreen.lobby);
         return;
       case AppScreen.lobby:
       case AppScreen.onlineHost:
       case AppScreen.onlineJoin:
+        blushLog('Nav', 'system back $from → home');
         _leaveToHome();
     }
   }

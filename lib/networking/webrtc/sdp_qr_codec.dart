@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 
+import '../../util/blush_log.dart';
+
 /// Compress / encode WebRTC signaling blobs for QR or paste.
 class SdpQrCodec {
   static const packageId = 'com.blushcraft.blushcraft';
@@ -66,7 +68,13 @@ class SdpQrCodec {
   }
 
   static Map<String, dynamic> decodeEnvelope(String raw) {
+    final rawLen = raw.length;
     var text = normalizeIncoming(raw);
+    blushLog(
+      'RTC',
+      'decodeEnvelope rawChars=$rawLen normalizedChars=${text.length} '
+      'prefix=${text.length > 8 ? text.substring(0, 8) : text}',
+    );
     if (text.startsWith('BC1C:')) {
       throw const FormatException(
         'Incomplete multi-part invite. Paste every BC1C: part, or Copy the full invite once.',

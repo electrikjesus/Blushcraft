@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../util/blush_log.dart';
 import '../game_message.dart';
 import '../game_transport.dart';
 import 'ice_config.dart';
@@ -142,12 +143,14 @@ class WebRtcQrSession extends GameSession {
   void _bindChannel(RTCDataChannel channel) {
     _channel = channel;
     channel.onDataChannelState = (state) {
+      blushLog('RTC', 'dataChannel state=$state');
       if (state == RTCDataChannelState.RTCDataChannelOpen) {
         final wasReconnect = _hadConnection;
         _hadConnection = true;
         _connectTimer?.cancel();
         lastError = null;
         status = wasReconnect ? 'Reconnected' : 'Connected';
+        blushLog('RTC', 'connected session=$sessionId reconnect=$wasReconnect');
         onConnection?.call(
           connected: true,
           endpointId: sessionId,
@@ -166,13 +169,15 @@ class WebRtcQrSession extends GameSession {
         final raw = message.text;
         if (raw.isEmpty) return;
         if (raw.startsWith(_rtcControlPrefix)) {
+          blushLog('RTC', 'recv control bytes=${raw.length}');
           await _handleRtcControl(raw.substring(_rtcControlPrefix.length));
           return;
         }
         final msg = GameMessage.decode(raw);
+        blushLog('RTC', 'recv type=${msg.type} bytes=${raw.length}');
         await onMessage(msg);
       } catch (e) {
-        debugPrint('WebRTC message decode error: $e');
+        blushLog('RTC', 'message decode error: $e');
       }
     };
   }
@@ -349,6 +354,7 @@ class WebRtcQrSession extends GameSession {
     _connectTimer?.cancel();
     _connectTimer = Timer(const Duration(seconds: 30), () {
       if (isConnected) return;
+      blushLog('RTC', 'connect timeout session=$sessionId ice=${_ice.length}');
       lastError =
           'Still connecting… Prefer Local on the same Wi‑Fi. '
           'For Online, stay on Wi‑Fi, paste a fresh full answer, and try again.';
@@ -366,6 +372,7 @@ class WebRtcQrSession extends GameSession {
     lastError = null;
     status = 'Creating invite…';
     notifyListeners();
+    blushLog('RTC', 'startAsHost session=$sessionId user=$userName');
 
     final pc = await _createPc();
     // Data-channel only for pairing — keeps the QR short.
@@ -381,12 +388,18 @@ class WebRtcQrSession extends GameSession {
     await _waitForIce(pc);
 
     final local = await pc.getLocalDescription();
+    final ice = _serializeIce();
     offerPayload = SdpQrCodec.encodeEnvelope(
       role: 'offer',
       sessionId: sessionId!,
       displayName: userName,
       sdp: local?.sdp ?? offer.sdp ?? '',
-      ice: _serializeIce(),
+      ice: ice,
+    );
+    blushLog(
+      'RTC',
+      'offer ready chars=${offerPayload!.length} ice=${ice.length} '
+      'sdpChars=${(local?.sdp ?? offer.sdp ?? '').length}',
     );
     status = 'Show this QR to your partner (best on Wi‑Fi)';
     notifyListeners();
@@ -401,6 +414,7 @@ class WebRtcQrSession extends GameSession {
     lastError = null;
     status = 'Joining…';
     notifyListeners();
+    blushLog('RTC', 'acceptOffer rawChars=${rawOffer.length}');
 
     try {
       final envelope = SdpQrCodec.decodeEnvelope(rawOffer);
@@ -408,30 +422,42 @@ class WebRtcQrSession extends GameSession {
         throw const FormatException('Expected a host offer (role=offer)');
       }
       sessionId = envelope['session'] as String?;
+      final iceList = envelope['ice'] as List<dynamic>? ?? const [];
+      blushLog(
+        'RTC',
+        'offer decoded session=$sessionId '
+        'sdpChars=${(envelope['sdp'] as String?)?.length ?? 0} ice=${iceList.length}',
+      );
 
       final pc = await _createPc();
 
       await pc.setRemoteDescription(
         RTCSessionDescription(envelope['sdp'] as String, 'offer'),
       );
-      await _applyRemoteIce(envelope['ice'] as List<dynamic>?);
+      await _applyRemoteIce(iceList);
 
       final answer = await pc.createAnswer({});
       await pc.setLocalDescription(answer);
       await _waitForIce(pc);
 
       final local = await pc.getLocalDescription();
+      final ice = _serializeIce();
       answerPayload = SdpQrCodec.encodeEnvelope(
         role: 'answer',
         sessionId: sessionId ?? _uuid.v4(),
         displayName: userName,
         sdp: local?.sdp ?? answer.sdp ?? '',
-        ice: _serializeIce(),
+        ice: ice,
+      );
+      blushLog(
+        'RTC',
+        'answer ready chars=${answerPayload!.length} ice=${ice.length}',
       );
       status = 'Show this answer QR to the host';
       notifyListeners();
       return answerPayload!;
     } catch (e) {
+      blushLog('RTC', 'acceptOffer failed: $e');
       lastError = 'Could not use invite: $e';
       status = lastError;
       notifyListeners();
@@ -445,6 +471,7 @@ class WebRtcQrSession extends GameSession {
     if (pc == null) {
       throw StateError('Start hosting before accepting an answer');
     }
+    blushLog('RTC', 'acceptAnswer rawChars=${rawAnswer.length}');
     try {
       final envelope = SdpQrCodec.decodeEnvelope(rawAnswer);
       if (envelope['role'] != 'answer') {
@@ -459,15 +486,23 @@ class WebRtcQrSession extends GameSession {
         );
       }
 
+      final iceList = envelope['ice'] as List<dynamic>? ?? const [];
+      blushLog(
+        'RTC',
+        'answer decoded session=${envelope['session']} '
+        'sdpChars=${(envelope['sdp'] as String?)?.length ?? 0} ice=${iceList.length}',
+      );
+
       lastError = null;
       await pc.setRemoteDescription(
         RTCSessionDescription(envelope['sdp'] as String, 'answer'),
       );
-      await _applyRemoteIce(envelope['ice'] as List<dynamic>?);
+      await _applyRemoteIce(iceList);
       status = 'Connecting…';
       _armConnectTimeout();
       notifyListeners();
     } catch (e) {
+      blushLog('RTC', 'acceptAnswer failed: $e');
       lastError = 'Could not apply answer: $e';
       status = lastError;
       notifyListeners();
@@ -491,9 +526,12 @@ class WebRtcQrSession extends GameSession {
   Future<void> send(GameMessage message) async {
     final ch = _channel;
     if (ch == null || ch.state != RTCDataChannelState.RTCDataChannelOpen) {
+      blushLog('RTC', 'send skipped (channel not open) type=${message.type}');
       return;
     }
-    await ch.send(RTCDataChannelMessage(message.encode()));
+    final encoded = message.encode();
+    blushLog('RTC', 'send type=${message.type} bytes=${encoded.length}');
+    await ch.send(RTCDataChannelMessage(encoded));
   }
 
   @override
