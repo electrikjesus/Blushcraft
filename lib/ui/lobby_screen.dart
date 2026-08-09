@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../networking/game_transport.dart';
-import '../../networking/nearby_game_session.dart';
 import '../../state/game_controller.dart';
 import 'theme.dart';
 import 'widgets/game_mode_picker.dart';
@@ -22,13 +21,15 @@ class LobbyScreen extends StatelessWidget {
   final VoidCallback onLeave;
   final VoidCallback onStart;
 
-  NearbyGameSession? get _nearby =>
-      session is NearbyGameSession ? session as NearbyGameSession : null;
+  LocalDiscoverySession? get _local =>
+      session is LocalDiscoverySession
+          ? session as LocalDiscoverySession
+          : null;
 
   @override
   Widget build(BuildContext context) {
     final state = controller.state;
-    final nearby = _nearby;
+    final local = _local;
 
     return BlushBackdrop(
       child: Scaffold(
@@ -48,7 +49,7 @@ class LobbyScreen extends StatelessWidget {
           builder: (context, _) {
             final s = controller.state ?? state;
             final status = session?.status ?? s?.message ?? '';
-            final discovered = nearby?.discovered.entries.toList() ?? [];
+            final discovered = local?.discovered.entries.toList() ?? [];
             final canEditRiskay = controller.isHost || controller.dryRun;
             final canEditMode = canEditRiskay;
             final partnerReady = controller.dryRun ||
@@ -113,18 +114,19 @@ class LobbyScreen extends StatelessWidget {
                   localPlayerId: controller.localPlayerId,
                   session: session,
                 ),
-                if (nearby != null &&
+                if (local != null &&
                     !controller.isHost &&
+                    !local.isConnected &&
                     discovered.isNotEmpty) ...[
                   const SizedBox(height: 28),
-                  Text('Nearby hosts', style: BlushTheme.display(20)),
+                  Text('Local hosts', style: BlushTheme.display(20)),
                   const SizedBox(height: 8),
                   ...discovered.map(
                     (e) => ListTile(
                       contentPadding: EdgeInsets.zero,
                       title: Text(e.value),
                       trailing: ElevatedButton(
-                        onPressed: () => nearby.connectTo(e.key),
+                        onPressed: () => local.connectTo(e.key),
                         child: const Text('Connect'),
                       ),
                     ),

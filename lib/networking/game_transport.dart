@@ -17,10 +17,21 @@ typedef ConnectionHandler = void Function({
   bool isReconnect,
 });
 
-/// Shared surface for Nearby and WebRTC sessions used by the app shell.
+/// Shared surface for Nearby, LAN, and WebRTC sessions used by the app shell.
 abstract class GameSession extends ChangeNotifier {
   bool get isConnected;
   String? get status;
   Future<void> send(GameMessage message);
   Future<void> stopAll();
+}
+
+/// Local Host/Join with discovery (LAN WebSocket or Nearby).
+abstract class LocalDiscoverySession extends GameSession {
+  Map<String, String> get discovered;
+
+  Future<void> startHosting();
+  Future<void> startJoining();
+  Future<void> connectTo(String endpointId);
+  Future<void> ensureHostingForReconnect();
+  Future<void> beginReconnectDiscovery();
 }

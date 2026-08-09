@@ -10,7 +10,6 @@ import '../../camera/reaction_camera.dart';
 import '../../models/game_state.dart';
 import '../../networking/game_message.dart';
 import '../../networking/game_transport.dart';
-import '../../networking/nearby_game_session.dart';
 import '../../networking/webrtc/webrtc_qr_session.dart';
 import '../../share/share_service.dart';
 import '../../state/game_controller.dart';
@@ -50,9 +49,9 @@ class _GameScreenState extends State<GameScreen> {
   static const _avLayoutPrefKey = 'blushcraft_av_layout';
   bool _avConsentGiven = false;
 
-  NearbyGameSession? get _nearby =>
-      widget.session is NearbyGameSession
-          ? widget.session as NearbyGameSession
+  LocalDiscoverySession? get _local =>
+      widget.session is LocalDiscoverySession
+          ? widget.session as LocalDiscoverySession
           : null;
 
   WebRtcQrSession? get _webrtc =>
@@ -94,7 +93,7 @@ class _GameScreenState extends State<GameScreen> {
     };
     _av.onLocalAudioChunk = (bytes) {
       if (_useWebRtcMedia) return; // audio via WebRTC tracks
-      final session = _nearby;
+      final session = widget.session;
       if (session == null || !session.isConnected) return;
       if (!_av.micEnabled) return;
       final now = DateTime.now();
@@ -653,14 +652,14 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   Widget _disconnectedPhase(GameState state) {
-    final nearby = _nearby;
-    final discovered = nearby?.discovered.entries.toList() ?? [];
+    final local = _local;
+    final discovered = local?.discovered.entries.toList() ?? [];
     final isHost = widget.controller.isHost;
 
     return ListenableBuilder(
       listenable: widget.session ?? widget.controller,
       builder: (context, _) {
-        final hosts = nearby?.discovered.entries.toList() ?? discovered;
+        final hosts = local?.discovered.entries.toList() ?? discovered;
         return ListView(
           padding: const EdgeInsets.all(24),
           children: [
@@ -685,7 +684,7 @@ class _GameScreenState extends State<GameScreen> {
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
-            if (nearby != null && isHost) ...[
+            if (local != null && isHost) ...[
               Text(
                 'Keep this screen open. Your partner should Join again and tap Connect.',
                 style: BlushTheme.body(14),
@@ -693,10 +692,10 @@ class _GameScreenState extends State<GameScreen> {
               ),
               const SizedBox(height: 16),
               OutlinedButton(
-                onPressed: () => nearby.ensureHostingForReconnect(),
+                onPressed: () => local.ensureHostingForReconnect(),
                 child: const Text('Re-advertise as host'),
               ),
-            ] else if (nearby != null) ...[
+            ] else if (local != null) ...[
               Text(
                 'Find the host again, then Connect to resume.',
                 style: BlushTheme.body(14),
@@ -704,7 +703,7 @@ class _GameScreenState extends State<GameScreen> {
               ),
               const SizedBox(height: 12),
               OutlinedButton(
-                onPressed: () => nearby.beginReconnectDiscovery(),
+                onPressed: () => local.beginReconnectDiscovery(),
                 child: const Text('Search again'),
               ),
               const SizedBox(height: 16),
@@ -713,7 +712,7 @@ class _GameScreenState extends State<GameScreen> {
                   contentPadding: EdgeInsets.zero,
                   title: Text(e.value),
                   trailing: ElevatedButton(
-                    onPressed: () => nearby.connectTo(e.key),
+                    onPressed: () => local.connectTo(e.key),
                     child: const Text('Connect'),
                   ),
                 ),

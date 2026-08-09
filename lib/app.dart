@@ -6,7 +6,7 @@ import 'models/game_mode.dart';
 import 'models/game_state.dart';
 import 'networking/game_message.dart';
 import 'networking/game_transport.dart';
-import 'networking/nearby_game_session.dart';
+import 'networking/lan_game_session.dart';
 import 'networking/webrtc/webrtc_qr_session.dart';
 import 'state/game_controller.dart';
 import 'state/stats_store.dart';
@@ -171,8 +171,8 @@ class _AppRootState extends State<AppRoot> {
     await _persistName(name);
     final controller = _newController(name: name, isHost: true);
 
-    late final NearbyGameSession session;
-    session = NearbyGameSession(
+    late final LanGameSession session;
+    session = LanGameSession(
       userName: name,
       onMessage: (msg) => _handleGameMessage(controller, msg),
       onConnection: ({
@@ -209,8 +209,8 @@ class _AppRootState extends State<AppRoot> {
     await _persistName(name);
     final controller = _newController(name: name, isHost: false);
 
-    late final NearbyGameSession session;
-    session = NearbyGameSession(
+    late final LanGameSession session;
+    session = LanGameSession(
       userName: name,
       onMessage: (msg) => _handleGameMessage(
         controller,

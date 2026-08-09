@@ -7,8 +7,9 @@ import 'package:permission_handler/permission_handler.dart';
 import 'game_message.dart';
 import 'game_transport.dart';
 
-/// Nearby Connections P2P session for local two-player sync.
-class NearbyGameSession extends GameSession {
+/// Nearby Connections P2P session for local two-player sync (Play Services).
+/// Prefer [LanGameSession] for GMS-free devices.
+class NearbyGameSession extends LocalDiscoverySession {
   NearbyGameSession({
     required this.userName,
     required this.onMessage,
@@ -32,6 +33,8 @@ class NearbyGameSession extends GameSession {
 
   @override
   String? status;
+
+  @override
   final Map<String, String> discovered = {};
 
   @override
@@ -114,6 +117,7 @@ class NearbyGameSession extends GameSession {
     return true;
   }
 
+  @override
   Future<void> startHosting() async {
     await _stopDiscoveryQuiet();
     if (_hadConnection || connectedEndpointId != null) {
@@ -172,6 +176,7 @@ class NearbyGameSession extends GameSession {
     }
   }
 
+  @override
   Future<void> startJoining() async {
     await _stopAdvertisingQuiet();
     await _stopDiscoveryQuiet();
@@ -234,6 +239,14 @@ class NearbyGameSession extends GameSession {
 
   String _friendlyNearbyError(String action, Object e) {
     final raw = '$e';
+    if (raw.contains('SERVICE_INVALID') ||
+        raw.contains('CONNECTIONS_API is not available') ||
+        raw.contains('17:') ||
+        raw.contains('Play Store, but it is missing')) {
+      return '$action failed: Nearby needs Google Play Services, '
+          'which is not available on this device. '
+          'Use Play over → Online on the same Wi‑Fi, or try phones with Play Services.';
+    }
     if (raw.contains('INTERNAL_ERROR') || raw.contains('8:')) {
       return '$action failed (Nearby internal error). '
           'Turn on Bluetooth and Location, wait a second, and try again. '
@@ -251,6 +264,7 @@ class NearbyGameSession extends GameSession {
   }
 
   /// After a drop: host keeps/restarts advertising without wiping session intent.
+  @override
   Future<void> ensureHostingForReconnect() async {
     reconnecting = true;
     status = 'Waiting for partner to reconnect…';
@@ -261,6 +275,7 @@ class NearbyGameSession extends GameSession {
   }
 
   /// After a drop: guest rediscovers hosts to rejoin the in-progress game.
+  @override
   Future<void> beginReconnectDiscovery() async {
     reconnecting = true;
     connectedEndpointId = null;
@@ -269,6 +284,7 @@ class NearbyGameSession extends GameSession {
     await _startDiscoveryInternal();
   }
 
+  @override
   Future<void> connectTo(String endpointId) async {
     try {
       await _nearby.requestConnection(

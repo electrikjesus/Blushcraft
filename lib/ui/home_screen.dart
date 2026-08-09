@@ -5,7 +5,7 @@ import 'theme.dart';
 import 'widgets/game_mode_picker.dart';
 import 'widgets/riskay_slider.dart';
 
-enum _PlayTransport { nearby, online }
+enum _PlayTransport { local, online }
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({
@@ -45,7 +45,7 @@ class _HomeScreenState extends State<HomeScreen>
     with SingleTickerProviderStateMixin {
   late final TextEditingController _name;
   late final AnimationController _pulse;
-  _PlayTransport _transport = _PlayTransport.nearby;
+  _PlayTransport _transport = _PlayTransport.local;
 
   @override
   void initState() {
@@ -179,9 +179,9 @@ class _HomeScreenState extends State<HomeScreen>
                         SegmentedButton<_PlayTransport>(
                           segments: const [
                             ButtonSegment(
-                              value: _PlayTransport.nearby,
-                              label: Text('Nearby'),
-                              icon: Icon(Icons.wifi_tethering, size: 18),
+                              value: _PlayTransport.local,
+                              label: Text('Local'),
+                              icon: Icon(Icons.wifi, size: 18),
                             ),
                             ButtonSegment(
                               value: _PlayTransport.online,
@@ -214,8 +214,8 @@ class _HomeScreenState extends State<HomeScreen>
                         const SizedBox(height: 8),
                         Text(
                           _online
-                              ? 'QR invite over the internet (WebRTC).'
-                              : 'Same room via Bluetooth / Wi-Fi.',
+                              ? 'QR / paste invite over WebRTC (best on Wi‑Fi).'
+                              : 'Same Wi‑Fi — no Google Play Services needed.',
                           style: BlushTheme.body(13, color: BlushTheme.inkMuted),
                         ),
                         const SizedBox(height: 16),
@@ -226,12 +226,12 @@ class _HomeScreenState extends State<HomeScreen>
                                   backgroundColor: BlushTheme.roseDeep,
                                 )
                               : null,
-                          child: Text(_online ? 'Host online' : 'Host nearby'),
+                          child: Text(_online ? 'Host online' : 'Host local'),
                         ),
                         const SizedBox(height: 12),
                         OutlinedButton(
                           onPressed: _onJoin,
-                          child: Text(_online ? 'Join online' : 'Join nearby'),
+                          child: Text(_online ? 'Join online' : 'Join local'),
                         ),
                         const SizedBox(height: 12),
                         TextButton(

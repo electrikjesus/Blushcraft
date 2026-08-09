@@ -7,7 +7,11 @@
 	<key>NSCameraUsageDescription</key>
 	<string>Blushcraft uses the front camera during the reaction check so you can see blushing moments and optionally share a selfie.</string>
 	<key>NSLocalNetworkUsageDescription</key>
-	<string>Blushcraft uses the local network to sync a game with a nearby partner.</string>
+	<string>Blushcraft uses the local network to sync a game with a partner on the same Wi‑Fi.</string>
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_blushcraft._tcp</string>
+	</array>
 	<key>NSBluetoothAlwaysUsageDescription</key>
 	<string>Blushcraft uses Bluetooth to find and connect to a nearby partner.</string>
 	<key>NSBluetoothPeripheralUsageDescription</key>
