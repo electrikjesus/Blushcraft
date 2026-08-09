@@ -167,6 +167,21 @@ class _AppRootState extends State<AppRoot> {
     });
   }
 
+  /// System back: game → lobby → home; online pairing cancels to home.
+  void _onSystemBack() {
+    switch (_screen) {
+      case AppScreen.home:
+        return;
+      case AppScreen.game:
+        setState(() => _screen = AppScreen.lobby);
+        return;
+      case AppScreen.lobby:
+      case AppScreen.onlineHost:
+      case AppScreen.onlineJoin:
+        _leaveToHome();
+    }
+  }
+
   Future<void> _startHost(String name) async {
     await _persistName(name);
     final controller = _newController(name: name, isHost: true);
@@ -393,9 +408,8 @@ class _AppRootState extends State<AppRoot> {
       );
     }
 
-    switch (_screen) {
-      case AppScreen.home:
-        return HomeScreen(
+    final child = switch (_screen) {
+      AppScreen.home => HomeScreen(
           initialName: _displayName,
           riskayLevel: _riskayLevel,
           onRiskayChanged: _persistRiskay,
@@ -408,9 +422,8 @@ class _AppRootState extends State<AppRoot> {
           onDryRun: _startDryRun,
           onStats: _openStats,
           onHowTo: _openHowTo,
-        );
-      case AppScreen.onlineHost:
-        return OnlineHostQrScreen(
+        ),
+      AppScreen.onlineHost => OnlineHostQrScreen(
           session: _session as WebRtcQrSession,
           onCancel: _leaveToHome,
           onConnected: () {
@@ -418,9 +431,8 @@ class _AppRootState extends State<AppRoot> {
               setState(() => _screen = AppScreen.lobby);
             }
           },
-        );
-      case AppScreen.onlineJoin:
-        return OnlineJoinQrScreen(
+        ),
+      AppScreen.onlineJoin => OnlineJoinQrScreen(
           session: _session as WebRtcQrSession,
           onCancel: _leaveToHome,
           onConnected: () {
@@ -428,20 +440,29 @@ class _AppRootState extends State<AppRoot> {
               setState(() => _screen = AppScreen.lobby);
             }
           },
-        );
-      case AppScreen.lobby:
-        return LobbyScreen(
+        ),
+      AppScreen.lobby => LobbyScreen(
           controller: _controller!,
           session: _session,
           onLeave: _leaveToHome,
           onStart: _startGame,
-        );
-      case AppScreen.game:
-        return GameScreen(
+        ),
+      AppScreen.game => GameScreen(
           controller: _controller!,
           session: _session,
           onLeave: _leaveToHome,
-        );
-    }
+        ),
+    };
+
+    // Main flow uses setState screens (not Navigator routes). Intercept the
+    // system back button so it walks parent screens instead of exiting.
+    return PopScope(
+      canPop: _screen == AppScreen.home,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        _onSystemBack();
+      },
+      child: child,
+    );
   }
 }
