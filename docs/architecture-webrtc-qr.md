@@ -1,10 +1,12 @@
 # Online play architecture: WebRTC + QR (v1)
 
-Status: **v1 in app** (QR signaling + data channel + WebRTC AV). Nearby play remains fully supported. Cloud signaling / TURN still later.
+Status: **v1 in app** (QR signaling + data channel + WebRTC AV). **Local play** uses mDNS + WebSocket ([`LanGameSession`](../lib/networking/lan_game_session.dart)) and does not need Play Services or QR. Cloud signaling / TURN still later.
 
 ## Goal
 
 Internet play **without a Blushcraft game server**. Round data (decks, hands, submissions, scores, AV) stays on the two phones. Pairing uses a **QR code or texted payload** for WebRTC signaling.
+
+Same-Wi‑Fi play should use **Play over → Local** (auto discovery). Online QR/paste is for when devices are not on a shared LAN (or as a fallback).
 
 Later: swap QR signaling for Supabase or Cloudflare **signaling-only** (and optional TURN) without rewriting `GameController`.
 

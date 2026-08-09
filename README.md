@@ -2,7 +2,7 @@
 
 **Blushcraft** is a two-player fill-in-the-blank card game made for couples and close friends who want something more personal than trivia night. One player reads a Statement with a blank; the other plays a Choice from their hand. You read the finished line out loud, watch each other's reaction, and score a point when someone breaks first: a blush, a laugh, looking away, or "I can't believe you said that."
 
-Rounds stay light or turn spicy with the **Riskay** slider. Choose **Romantic Partner** or **Fresh Start** decks. Play face to face over Nearby Connections, practice alone on one phone, or invite a partner online with a short QR / paste invite. Game sync and reaction video stay between your devices, not on a Blushcraft server.
+Rounds stay light or turn spicy with the **Riskay** slider. Choose **Romantic Partner** or **Fresh Start** decks. Play face to face over the same Wi‑Fi (no Google Play Services required), practice alone on one phone, or invite a partner online with a QR / paste invite. Game sync and reaction video stay between your devices, not on a Blushcraft server.
 
 First to **5** Statement points wins and picks the prize.
 
@@ -16,12 +16,12 @@ Practice round in ~12 seconds: scroll the hand, submit, reveal, reaction check, 
 
 Store / Obtainium listing stills (pulled from the demo) live in [`docs/screenshots/store/`](docs/screenshots/store/). Regenerate with `tool/record_round_demo.py` then `./tool/extract_store_screenshots.sh` after recording a new demo. A social-ready `round-demo.mp4` is attached to GitHub Releases.
 
-Built with **Flutter** (Android first, iOS-ready). Local multiplayer uses Google **Nearby Connections** (Bluetooth / Wi-Fi). Online play uses **WebRTC + QR** so round data stays on the two phones.
+Built with **Flutter** (Android first, iOS-ready). Local multiplayer uses **mDNS + WebSocket** on the same Wi‑Fi. Online play uses **WebRTC + QR** so round data stays on the two phones.
 
 ## Features
 
-- Host / Join local 2-player games (Nearby) — works for same-room meetups when both open Join/Host
-- Host / Join online via WebRTC + short data-channel QR / paste invites
+- Host / Join local 2-player games on the same Wi‑Fi (works without Google Play Services)
+- Host / Join online via WebRTC + data-channel QR / paste invites
 - Practice mode on a single device
 - **Game modes:** Romantic Partner, Fresh Start (BFF coming soon)
 - **Riskay** slider (Innocent / Blush / Riskay) mixes card heat
@@ -29,7 +29,7 @@ Built with **Flutter** (Android first, iOS-ready). Local multiplayer uses Google
 - First to **5** points wins and picks a prize
 - Optional reaction camera + mic (consent in lobby or in-game; privacy toggles)
 - Phone layout expands the reaction camera strip with on-screen controls
-- Mid-game reconnect if Nearby drops briefly
+- Mid-game reconnect if the local link drops briefly
 - Share combos, results, and stats from the app
 - Local win/loss and recent-combo stats
 - Per-ABI + universal Android APKs (armeabi-v7a / arm64-v8a / x86_64)
@@ -37,8 +37,8 @@ Built with **Flutter** (Android first, iOS-ready). Local multiplayer uses Google
 ## Requirements
 
 - Flutter 3.22+ (Dart 3)
-- Two Android phones for Host/Join (API 26+)
-- **Location**, **Bluetooth**, and Wi‑Fi state permissions for Nearby Connections
+- Two Android devices for Host/Join (API 26+), same Wi‑Fi for Local
+- Local network permission (Android 17+ / iOS Local Network)
 - Camera + microphone permission for the optional reaction selfie/voice view (either can be muted in-app)
 
 ## Run
@@ -58,11 +58,11 @@ Practice without a second phone:
 
 ## Two-device play
 
-### Nearby (same room)
+### Local (same Wi‑Fi)
 
 1. Both players install/run the app and enter names
-2. On **Play over → Nearby**, Player A taps **Host nearby** (keep Location + Bluetooth on)
-3. Player B taps **Join nearby**, then **Connect** on the discovered host
+2. On **Play over → Local**, Player A taps **Host local**
+3. Player B taps **Join local**, then **Connect** on the discovered host
 4. Host taps **Start game**
 5. Each round: pick a Choice, reveal and read aloud, reaction check, refill to 7
 6. First to 5 Statement points wins and chooses a prize
@@ -70,10 +70,10 @@ Practice without a second phone:
 ### Online (QR / paste)
 
 1. Switch **Play over → Online**
-2. Host taps **Host online** and shows the invite QR (or Copy / Share)
+2. Host taps **Host online** and shows the invite QR (or Copy / Share the full invite text)
 3. Guest taps **Join online**, scans or pastes the invite, then shows the answer QR
-4. Host scans or pastes the answer and waits for **Connected** (keep both screens awake)
-5. Continue in the lobby as with Nearby
+4. Host scans or pastes the **full** answer text and waits for **Connected** (keep both screens awake)
+5. Continue in the lobby as with Local
 
 Best on the same Wi‑Fi. See [docs/architecture-webrtc-qr.md](docs/architecture-webrtc-qr.md).
 

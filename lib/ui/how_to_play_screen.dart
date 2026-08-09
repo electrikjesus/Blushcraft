@@ -23,7 +23,8 @@ class HowToPlayScreen extends StatelessWidget {
             const SizedBox(height: 28),
             _section(
               '1. Setup',
-              'Host starts a local game; your partner joins nearby. '
+              'Host starts a local game on the same Wi‑Fi; your partner taps Join and Connect. '
+              'Or use Online with a QR / paste invite. '
               'Each of you gets 7 Choice cards. One Statement card is flipped each round.',
             ),
             _section(
@@ -45,7 +46,7 @@ class HowToPlayScreen extends StatelessWidget {
             ),
             _section(
               'Connection drops',
-              'If Nearby disconnects mid-game, stay on the pause screen. The host keeps advertising; '
+              'If the local Wi‑Fi link drops mid-game, stay on the pause screen. The host keeps advertising; '
               'the partner searches and taps Connect again to resume the same round.',
             ),
             _section(
