@@ -140,10 +140,11 @@ class _OnlineJoinQrScreenState extends State<OnlineJoinQrScreen> {
             const SizedBox(height: 8),
             Text(
               answer == null
-                  ? 'Scan their QR or paste the invite text. Keep this screen '
-                      'awake. Then show your answer QR back.'
-                  : 'Have the host scan this QR (or Copy / Share the answer text). '
-                      'Keep both phones awake until Connected.',
+                  ? 'Prefer Local on the same Wi‑Fi (no codes). '
+                      'For Online: scan their QR or paste the full invite text. '
+                      'Keep this screen awake, then show your answer.'
+                  : 'Have the host scan this QR, or Copy / Share the full answer text. '
+                      'Keep both devices awake until Connected.',
               style: BlushTheme.body(14, color: BlushTheme.inkMuted),
             ),
             const SizedBox(height: 8),
@@ -175,17 +176,49 @@ class _OnlineJoinQrScreenState extends State<OnlineJoinQrScreen> {
               TextField(
                 controller: _offerController,
                 minLines: 2,
-                maxLines: 5,
+                maxLines: 6,
                 decoration: const InputDecoration(
-                  hintText: 'Or paste BC1:… invite here',
+                  hintText: 'Paste full BC1:… invite (or all BC1C: lines)',
                 ),
               ),
               const SizedBox(height: 12),
-              ElevatedButton(
-                onPressed: _busy
-                    ? null
-                    : () => _acceptOffer(_offerController.text.trim()),
-                child: const Text('Use pasted invite'),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: _busy
+                          ? null
+                          : () async {
+                              final data =
+                                  await Clipboard.getData(Clipboard.kTextPlain);
+                              final text = data?.text?.trim() ?? '';
+                              if (text.isEmpty) {
+                                setState(() => _error = 'Clipboard is empty');
+                                return;
+                              }
+                              _offerController.text = text;
+                              try {
+                                final preview = SdpQrCodec.describeEnvelope(
+                                  SdpQrCodec.decodeEnvelope(text),
+                                );
+                                setState(() => _error = 'Ready: $preview');
+                              } catch (e) {
+                                setState(() => _error = '$e');
+                              }
+                            },
+                      child: const Text('Paste'),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: _busy
+                          ? null
+                          : () => _acceptOffer(_offerController.text.trim()),
+                      child: const Text('Use invite'),
+                    ),
+                  ),
+                ],
               ),
             ] else ...[
               if (payload != null)
@@ -234,9 +267,13 @@ class _OnlineJoinQrScreenState extends State<OnlineJoinQrScreen> {
                   Expanded(
                     child: OutlinedButton.icon(
                       onPressed: () {
-                        Clipboard.setData(ClipboardData(text: answer));
+                        Clipboard.setData(
+                          ClipboardData(
+                            text: SdpQrCodec.clipboardText(answer),
+                          ),
+                        );
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Answer copied')),
+                          const SnackBar(content: Text('Full answer copied')),
                         );
                       },
                       icon: const Icon(Icons.copy),
@@ -247,9 +284,10 @@ class _OnlineJoinQrScreenState extends State<OnlineJoinQrScreen> {
                   Expanded(
                     child: ElevatedButton.icon(
                       onPressed: () {
+                        final text = SdpQrCodec.clipboardText(answer);
                         SharePlus.instance.share(
                           ShareParams(
-                            text: 'Blushcraft answer:\n$answer',
+                            text: 'Blushcraft answer:\n$text',
                             subject: 'Blushcraft answer',
                           ),
                         );

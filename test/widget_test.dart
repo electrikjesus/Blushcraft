@@ -30,6 +30,30 @@ void main() {
     expect(parts.first.startsWith('BC1C:'), isTrue);
     final joined = SdpQrCodec.normalizeIncoming(parts.join('\n'));
     expect(SdpQrCodec.decodeEnvelope(joined)['session'], 'sess-1');
+
+    // Messy paste: whitespace inside base64 and between chunks.
+    final messySingle = payload.replaceAllMapped(
+      RegExp(r'(.{16})'),
+      (m) => '${m[1]}\n',
+    );
+    expect(SdpQrCodec.decodeEnvelope(messySingle)['session'], 'sess-1');
+
+    final messyChunks = parts.map((p) {
+      final i = p.indexOf(':', 5); // after BC1C:
+      // Insert spaces into body.
+      final head = p.substring(0, i + 1);
+      final body = p.substring(i + 1);
+      return '$head${body.splitMapJoin(RegExp(r'.{8}'), onMatch: (m) => '${m[0]} ', onNonMatch: (s) => s)}';
+    }).join('\n\n');
+    expect(
+      SdpQrCodec.decodeEnvelope(SdpQrCodec.normalizeIncoming(messyChunks))['session'],
+      'sess-1',
+    );
+
+    expect(
+      () => SdpQrCodec.joinChunks(parts.take(1).toList()),
+      throwsA(isA<FormatException>()),
+    );
   });
 
   test('StatementCard fills first blank only', () {

@@ -212,9 +212,13 @@ class _OnlineHostQrScreenState extends State<OnlineHostQrScreen> {
                       onPressed: () {
                         final full = widget.session.offerPayload;
                         if (full == null) return;
-                        Clipboard.setData(ClipboardData(text: full));
+                        Clipboard.setData(
+                          ClipboardData(text: SdpQrCodec.clipboardText(full)),
+                        );
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Invite copied')),
+                          const SnackBar(
+                            content: Text('Full invite copied'),
+                          ),
                         );
                       },
                       icon: const Icon(Icons.copy),
@@ -227,9 +231,10 @@ class _OnlineHostQrScreenState extends State<OnlineHostQrScreen> {
                       onPressed: () {
                         final full = widget.session.offerPayload;
                         if (full == null) return;
+                        final text = SdpQrCodec.clipboardText(full);
                         SharePlus.instance.share(
                           ShareParams(
-                            text: 'Blushcraft invite:\n$full',
+                            text: 'Blushcraft invite:\n$text',
                             subject: 'Blushcraft invite',
                           ),
                         );
@@ -245,7 +250,8 @@ class _OnlineHostQrScreenState extends State<OnlineHostQrScreen> {
             Text('Their answer', style: BlushTheme.display(20)),
             const SizedBox(height: 8),
             Text(
-              'Scan their answer QR, or paste the answer text below.',
+              'Same Wi‑Fi works best. Prefer Local play (no codes) when you can. '
+              'Scan their answer QR, or paste the full answer text below.',
               style: BlushTheme.body(13, color: BlushTheme.inkMuted),
             ),
             const SizedBox(height: 12),
@@ -288,15 +294,47 @@ class _OnlineHostQrScreenState extends State<OnlineHostQrScreen> {
               TextField(
                 controller: _answerController,
                 minLines: 2,
-                maxLines: 5,
+                maxLines: 6,
                 decoration: const InputDecoration(
-                  hintText: 'Paste BC1:… answer from your partner',
+                  hintText: 'Paste full BC1:… answer (or all BC1C: lines)',
                 ),
               ),
               const SizedBox(height: 12),
-              ElevatedButton(
-                onPressed: _busy ? null : () => _submitAnswer(),
-                child: const Text('Connect with answer'),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: _busy
+                          ? null
+                          : () async {
+                              final data =
+                                  await Clipboard.getData(Clipboard.kTextPlain);
+                              final text = data?.text?.trim() ?? '';
+                              if (text.isEmpty) {
+                                setState(() => _error = 'Clipboard is empty');
+                                return;
+                              }
+                              _answerController.text = text;
+                              try {
+                                final preview = SdpQrCodec.describeEnvelope(
+                                  SdpQrCodec.decodeEnvelope(text),
+                                );
+                                setState(() => _error = 'Ready: $preview');
+                              } catch (e) {
+                                setState(() => _error = '$e');
+                              }
+                            },
+                      child: const Text('Paste'),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: _busy ? null : () => _submitAnswer(),
+                      child: const Text('Connect'),
+                    ),
+                  ),
+                ],
               ),
             ] else ...[
               const SizedBox(height: 8),

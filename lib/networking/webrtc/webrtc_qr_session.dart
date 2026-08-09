@@ -264,7 +264,7 @@ class WebRtcQrSession extends GameSession {
 
   Future<void> _waitForIce(
     RTCPeerConnection pc, {
-    Duration timeout = const Duration(seconds: 8),
+    Duration timeout = const Duration(seconds: 12),
   }) async {
     final done = Completer<void>();
     void check(RTCIceGatheringState? state) {
@@ -305,12 +305,12 @@ class WebRtcQrSession extends GameSession {
     }
 
     final picked = <RTCIceCandidate>[
-      ...byType['host']!.take(2),
-      ...byType['srflx']!.take(2),
+      ...byType['host']!.take(4),
+      ...byType['srflx']!.take(3),
       ...byType['relay']!.take(1),
     ];
     if (picked.isEmpty) {
-      picked.addAll(_ice.take(4));
+      picked.addAll(_ice.take(6));
     }
 
     return picked
@@ -350,7 +350,8 @@ class WebRtcQrSession extends GameSession {
     _connectTimer = Timer(const Duration(seconds: 30), () {
       if (isConnected) return;
       lastError =
-          'Still connecting… Check Wi‑Fi, or paste a fresh answer and try again.';
+          'Still connecting… Prefer Local on the same Wi‑Fi. '
+          'For Online, stay on Wi‑Fi, paste a fresh full answer, and try again.';
       status = lastError;
       notifyListeners();
     });
@@ -401,34 +402,41 @@ class WebRtcQrSession extends GameSession {
     status = 'Joining…';
     notifyListeners();
 
-    final envelope = SdpQrCodec.decodeEnvelope(rawOffer);
-    if (envelope['role'] != 'offer') {
-      throw const FormatException('Expected a host offer QR');
+    try {
+      final envelope = SdpQrCodec.decodeEnvelope(rawOffer);
+      if (envelope['role'] != 'offer') {
+        throw const FormatException('Expected a host offer (role=offer)');
+      }
+      sessionId = envelope['session'] as String?;
+
+      final pc = await _createPc();
+
+      await pc.setRemoteDescription(
+        RTCSessionDescription(envelope['sdp'] as String, 'offer'),
+      );
+      await _applyRemoteIce(envelope['ice'] as List<dynamic>?);
+
+      final answer = await pc.createAnswer({});
+      await pc.setLocalDescription(answer);
+      await _waitForIce(pc);
+
+      final local = await pc.getLocalDescription();
+      answerPayload = SdpQrCodec.encodeEnvelope(
+        role: 'answer',
+        sessionId: sessionId ?? _uuid.v4(),
+        displayName: userName,
+        sdp: local?.sdp ?? answer.sdp ?? '',
+        ice: _serializeIce(),
+      );
+      status = 'Show this answer QR to the host';
+      notifyListeners();
+      return answerPayload!;
+    } catch (e) {
+      lastError = 'Could not use invite: $e';
+      status = lastError;
+      notifyListeners();
+      rethrow;
     }
-    sessionId = envelope['session'] as String?;
-
-    final pc = await _createPc();
-
-    await pc.setRemoteDescription(
-      RTCSessionDescription(envelope['sdp'] as String, 'offer'),
-    );
-    await _applyRemoteIce(envelope['ice'] as List<dynamic>?);
-
-    final answer = await pc.createAnswer({});
-    await pc.setLocalDescription(answer);
-    await _waitForIce(pc);
-
-    final local = await pc.getLocalDescription();
-    answerPayload = SdpQrCodec.encodeEnvelope(
-      role: 'answer',
-      sessionId: sessionId ?? _uuid.v4(),
-      displayName: userName,
-      sdp: local?.sdp ?? answer.sdp ?? '',
-      ice: _serializeIce(),
-    );
-    status = 'Show this answer QR to the host';
-    notifyListeners();
-    return answerPayload!;
   }
 
   /// Host: apply guest answer from QR / paste.
@@ -437,24 +445,34 @@ class WebRtcQrSession extends GameSession {
     if (pc == null) {
       throw StateError('Start hosting before accepting an answer');
     }
-    final envelope = SdpQrCodec.decodeEnvelope(rawAnswer);
-    if (envelope['role'] != 'answer') {
-      throw const FormatException('Expected a guest answer QR');
-    }
-    if (sessionId != null &&
-        envelope['session'] != null &&
-        envelope['session'] != sessionId) {
-      throw const FormatException('Answer session does not match this invite');
-    }
+    try {
+      final envelope = SdpQrCodec.decodeEnvelope(rawAnswer);
+      if (envelope['role'] != 'answer') {
+        throw const FormatException('Expected a guest answer (role=answer)');
+      }
+      if (sessionId != null &&
+          envelope['session'] != null &&
+          envelope['session'] != sessionId) {
+        throw const FormatException(
+          'Answer session does not match this invite. '
+          'Use the answer from the guest who scanned this invite.',
+        );
+      }
 
-    lastError = null;
-    await pc.setRemoteDescription(
-      RTCSessionDescription(envelope['sdp'] as String, 'answer'),
-    );
-    await _applyRemoteIce(envelope['ice'] as List<dynamic>?);
-    status = 'Connecting…';
-    _armConnectTimeout();
-    notifyListeners();
+      lastError = null;
+      await pc.setRemoteDescription(
+        RTCSessionDescription(envelope['sdp'] as String, 'answer'),
+      );
+      await _applyRemoteIce(envelope['ice'] as List<dynamic>?);
+      status = 'Connecting…';
+      _armConnectTimeout();
+      notifyListeners();
+    } catch (e) {
+      lastError = 'Could not apply answer: $e';
+      status = lastError;
+      notifyListeners();
+      rethrow;
+    }
   }
 
   Future<void> setTrackEnabled({required bool video, required bool audio}) async {
