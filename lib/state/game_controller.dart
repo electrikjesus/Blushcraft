@@ -10,6 +10,7 @@ import '../models/game_state.dart';
 import '../models/player.dart';
 import '../models/round_result.dart';
 import '../networking/game_message.dart';
+import '../util/blush_log.dart';
 import 'stats_store.dart';
 
 typedef SendMessage = Future<void> Function(GameMessage message);
@@ -211,13 +212,17 @@ class GameController extends ChangeNotifier {
             : localPlayerId);
 
     if (!isHost && !dryRun) {
+      blushLog('Game', 'guest submit choice=$choiceId phase=${_state!.phase.name}');
       await sendMessage?.call(
         SubmitChoiceMessage(playerId: localPlayerId, choiceId: choiceId),
       );
-      // Optimistic local wait state
+      // Optimistic wait — mark local submission so UI locks (host sync follows).
+      final asGuest = localPlayerId == _state!.guest.id;
       _state = _state!.copyWith(
         phase: GamePhase.waitingForOpponent,
         message: 'Waiting for your partner…',
+        guestSubmittedChoiceId: asGuest ? choiceId : null,
+        hostSubmittedChoiceId: asGuest ? null : choiceId,
       );
       notifyListeners();
       return;
@@ -235,13 +240,29 @@ class GameController extends ChangeNotifier {
   Future<void> _applySubmit(String playerId, int choiceId) async {
     if (_state == null || !isHost) return;
     final choice = _cards.choiceById(choiceId, mode: _gameMode);
-    if (choice == null) return;
+    if (choice == null) {
+      blushLog('Game', 'submit ignored: unknown choice=$choiceId');
+      return;
+    }
 
     final isHostPlayer = playerId == _state!.host.id;
     final hand = List<int>.from(isHostPlayer ? _state!.hostHand : _state!.guestHand);
-    if (!hand.contains(choiceId)) return;
-    if (isHostPlayer && _state!.hostSubmittedChoiceId != null) return;
-    if (!isHostPlayer && _state!.guestSubmittedChoiceId != null) return;
+    if (!hand.contains(choiceId)) {
+      blushLog(
+        'Game',
+        'submit ignored: choice=$choiceId not in '
+        '${isHostPlayer ? 'host' : 'guest'} hand=$hand',
+      );
+      return;
+    }
+    if (isHostPlayer && _state!.hostSubmittedChoiceId != null) {
+      blushLog('Game', 'submit ignored: host already submitted');
+      return;
+    }
+    if (!isHostPlayer && _state!.guestSubmittedChoiceId != null) {
+      blushLog('Game', 'submit ignored: guest already submitted');
+      return;
+    }
 
     hand.remove(choiceId);
 
@@ -264,12 +285,17 @@ class GameController extends ChangeNotifier {
         phase: GamePhase.reveal,
         message: 'Read your lines aloud, then look each other in the eye.',
       );
+      blushLog('Game', 'both submitted → reveal');
     } else {
       _state = _state!.copyWith(
         phase: dryRun ? GamePhase.selecting : GamePhase.waitingForOpponent,
         message: dryRun
             ? 'Now pick for ${_state!.guest.name}…'
             : 'Waiting for your partner…',
+      );
+      blushLog(
+        'Game',
+        '${isHostPlayer ? 'host' : 'guest'} submitted → ${_state!.phase.name}',
       );
     }
 
@@ -290,6 +316,7 @@ class GameController extends ChangeNotifier {
       clearVotes: true,
       message: 'Who blushed, laughed, or broke eye contact first?',
     );
+    blushLog('Game', 'reveal → reaction');
     notifyListeners();
     await _broadcast();
   }

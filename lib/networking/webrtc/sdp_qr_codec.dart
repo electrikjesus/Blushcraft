@@ -141,12 +141,12 @@ class SdpQrCodec {
     return parts;
   }
 
-  /// Clipboard-friendly form: single BC1, or all BC1C parts joined by newlines.
-  static String clipboardText(String payload) {
-    final parts = chunk(payload);
-    if (parts.length == 1) return parts.first;
-    return parts.join('\n');
-  }
+  /// Clipboard / Share form: always the full single `BC1:` blob.
+  ///
+  /// Do **not** split into `BC1C:` QR chunks here — messengers and paste UIs
+  /// often keep only the first ~900 chars, which then fails as "1 of 2 parts".
+  /// Multi-part is only for on-screen QR paging via [chunk].
+  static String clipboardText(String payload) => payload.trim();
 
   /// Reassemble [chunk] parts or return a single BC1 payload as-is.
   static String joinChunks(List<String> parts) {
@@ -170,9 +170,11 @@ class SdpQrCodec {
       sorted[int.parse(m.group(1)!)] = m.group(3)!.replaceAll(RegExp(r'\s+'), '');
     }
     if (sorted.length != total) {
+      final have = sorted.keys.toList()..sort();
       throw FormatException(
-        'Incomplete invite: have ${sorted.length} of $total parts. '
-        'Paste every BC1C: line, or Copy the full invite once.',
+        'Incomplete invite: have ${sorted.length} of $total parts '
+        '(got ${have.join(", ")}). '
+        'On the host, tap Copy (full invite) — not a single QR part — then Paste again.',
       );
     }
     final buf = StringBuffer();

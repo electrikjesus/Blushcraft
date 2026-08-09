@@ -13,6 +13,7 @@ import '../../networking/game_transport.dart';
 import '../../networking/webrtc/webrtc_qr_session.dart';
 import '../../share/share_service.dart';
 import '../../state/game_controller.dart';
+import '../../util/blush_log.dart';
 import 'av_consent.dart';
 import 'theme.dart';
 import 'widgets/card_face.dart';
@@ -48,6 +49,9 @@ class _GameScreenState extends State<GameScreen> {
   ReactionAvLayoutPref _avLayoutPref = ReactionAvLayoutPref.auto;
   static const _avLayoutPrefKey = 'blushcraft_av_layout';
   bool _avConsentGiven = false;
+  bool _avInitAttempted = false;
+  bool _avInitFailed = false;
+  int _frameFailStreak = 0;
 
   LocalDiscoverySession? get _local =>
       widget.session is LocalDiscoverySession
@@ -204,8 +208,25 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   Future<void> _ensureAv() async {
+    // Don't hammer init every state tick when cameras are missing/broken.
+    if (_avInitFailed) return;
+    if (!_av.ready && _avInitAttempted && !_av.initializing) {
+      _avInitFailed = true;
+      blushLog('AV', 'camera init failed — continuing without peer frames');
+      _stopFrames();
+      return;
+    }
+    _avInitAttempted = true;
     final ok = await _av.init();
-    if (!ok || !mounted) return;
+    if (!ok || !mounted) {
+      if (!_av.initializing) {
+        _avInitFailed = true;
+        blushLog('AV', 'camera unavailable (${_av.error}) — game continues');
+        _stopFrames();
+      }
+      return;
+    }
+    _avInitFailed = false;
     if (_av.cameraEnabled) {
       _startFrames();
     }
@@ -236,11 +257,23 @@ class _GameScreenState extends State<GameScreen> {
 
   void _startFrames() {
     if (_useWebRtcMedia) return;
+    if (!_av.ready || !_av.cameraEnabled) return;
+    _frameFailStreak = 0;
     _frameTimer?.cancel();
     _frameTimer = Timer.periodic(const Duration(milliseconds: 900), (_) async {
-      if (!_av.cameraEnabled) return;
+      if (!_av.cameraEnabled || !_av.ready) return;
       final b64 = await _av.captureBase64Jpeg();
-      if (b64 == null) return;
+      if (b64 == null) {
+        _frameFailStreak++;
+        if (_frameFailStreak >= 3) {
+          blushLog('AV', 'capture failing — stopping peer frames');
+          _stopFrames();
+        }
+        return;
+      }
+      _frameFailStreak = 0;
+      // Keep LAN free for game messages; drop oversized snapshots.
+      if (b64.length > 24 * 1024) return;
       final session = widget.session;
       if (session == null || !session.isConnected) return;
       await session.send(
@@ -265,8 +298,13 @@ class _GameScreenState extends State<GameScreen> {
       final ok = await _confirmAvConsent();
       if (!ok || !mounted) return;
       if (!_useWebRtcMedia) {
+        _avInitFailed = false;
+        _avInitAttempted = false;
         final ready = await _av.init();
-        if (!ready || !mounted) return;
+        if (!ready || !mounted) {
+          blushLog('AV', 'camera still unavailable — leaving camera off');
+          return;
+        }
       }
       await _av.setCameraEnabled(true);
       if (!_useWebRtcMedia) {
@@ -503,9 +541,14 @@ class _GameScreenState extends State<GameScreen> {
 
   Widget _selectPhase(GameState state) {
     final dryGuest = widget.controller.dryRunAwaitingGuestSubmit;
+    // Both seats must still be able to submit while the other is already waiting.
+    // Phase flips to waitingForOpponent after the *first* submission — do not
+    // treat that as "selection locked" for the player who has not submitted yet.
     final canSelect = widget.controller.dryRun
         ? true
-        : (state.phase == GamePhase.selecting && !state.localHasSubmitted);
+        : !state.localHasSubmitted &&
+            (state.phase == GamePhase.selecting ||
+                state.phase == GamePhase.waitingForOpponent);
 
     final dryHint = dryGuest
         ? 'Pick a card for ${state.guest.name}'

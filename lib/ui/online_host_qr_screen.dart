@@ -7,6 +7,8 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../networking/webrtc/sdp_qr_codec.dart';
 import '../networking/webrtc/webrtc_qr_session.dart';
+import '../util/blush_log.dart';
+import '../util/camera_availability.dart';
 import 'theme.dart';
 
 /// Host shows offer QR; scans/pastes guest answer to finish pairing.
@@ -29,10 +31,11 @@ class OnlineHostQrScreen extends StatefulWidget {
 class _OnlineHostQrScreenState extends State<OnlineHostQrScreen> {
   final _answerController = TextEditingController();
   final _answerChunks = <String>[];
-  final _scannerController = MobileScannerController();
+  MobileScannerController? _scannerController;
   String? _error;
   bool _busy = false;
   bool _showScanner = false;
+  bool _cameraAvailable = false;
   List<String> _offerChunks = const [];
   int _chunkIndex = 0;
 
@@ -41,7 +44,17 @@ class _OnlineHostQrScreenState extends State<OnlineHostQrScreen> {
     super.initState();
     widget.session.addListener(_onSession);
     WakelockPlus.enable();
+    _probeCamera();
     _bootstrap();
+  }
+
+  Future<void> _probeCamera() async {
+    final ok = await deviceHasUsableCamera();
+    if (!mounted) return;
+    setState(() => _cameraAvailable = ok);
+    if (!ok) {
+      blushLog('RTC', 'host: no camera — paste-only answer');
+    }
   }
 
   Future<void> _bootstrap() async {
@@ -75,11 +88,39 @@ class _OnlineHostQrScreenState extends State<OnlineHostQrScreen> {
     });
   }
 
+  Future<void> _setScannerVisible(bool visible) async {
+    if (visible && !_cameraAvailable) {
+      setState(() {
+        _error = 'No camera on this device — paste the answer text instead.';
+        _showScanner = false;
+      });
+      return;
+    }
+    if (visible) {
+      _scannerController ??= MobileScannerController();
+      setState(() => _showScanner = true);
+      try {
+        await _scannerController!.start();
+      } catch (e) {
+        blushLog('RTC', 'scanner start failed: $e');
+        setState(() {
+          _showScanner = false;
+          _error = 'Scanner unavailable — paste the answer text instead.';
+        });
+      }
+    } else {
+      setState(() => _showScanner = false);
+      try {
+        await _scannerController?.stop();
+      } catch (_) {}
+    }
+  }
+
   @override
   void dispose() {
     widget.session.removeListener(_onSession);
     _answerController.dispose();
-    _scannerController.dispose();
+    _scannerController?.dispose();
     WakelockPlus.disable();
     super.dispose();
   }
@@ -116,7 +157,10 @@ class _OnlineHostQrScreenState extends State<OnlineHostQrScreen> {
       _showScanner = false;
     });
     try {
-      await _scannerController.stop();
+      try {
+        await _scannerController?.stop();
+      } catch (_) {}
+      blushLog('RTC', 'host acceptAnswer chars=${raw.length}');
       await widget.session.acceptAnswer(raw);
     } catch (e) {
       setState(() {
@@ -216,13 +260,17 @@ class _OnlineHostQrScreenState extends State<OnlineHostQrScreen> {
                           ClipboardData(text: SdpQrCodec.clipboardText(full)),
                         );
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Full invite copied'),
+                          SnackBar(
+                            content: Text(
+                              full.length > SdpQrCodec.maxSingleQrChars
+                                  ? 'Full invite copied (${full.length} chars) — paste all of it'
+                                  : 'Full invite copied',
+                            ),
                           ),
                         );
                       },
                       icon: const Icon(Icons.copy),
-                      label: const Text('Copy'),
+                      label: const Text('Copy full'),
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -251,46 +299,43 @@ class _OnlineHostQrScreenState extends State<OnlineHostQrScreen> {
             const SizedBox(height: 8),
             Text(
               'Same Wi‑Fi works best. Prefer Local play (no codes) when you can. '
-              'Scan their answer QR, or paste the full answer text below.',
+              '${_cameraAvailable ? 'Scan their answer QR, or paste the full answer text below.' : 'Paste the full answer text below (no camera on this device).'}',
               style: BlushTheme.body(13, color: BlushTheme.inkMuted),
             ),
             const SizedBox(height: 12),
             if (!connecting) ...[
-              OutlinedButton.icon(
-                onPressed: _busy
-                    ? null
-                    : () async {
-                        setState(() => _showScanner = !_showScanner);
-                        if (_showScanner) {
-                          await _scannerController.start();
-                        } else {
-                          await _scannerController.stop();
-                        }
-                      },
-                icon: Icon(_showScanner ? Icons.close : Icons.qr_code_scanner),
-                label: Text(_showScanner ? 'Hide scanner' : 'Scan answer QR'),
-              ),
-              if (_showScanner) ...[
-                const SizedBox(height: 12),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(16),
-                  child: SizedBox(
-                    height: 220,
-                    child: MobileScanner(
-                      controller: _scannerController,
-                      onDetect: (capture) {
-                        final barcodes = capture.barcodes;
-                        if (barcodes.isEmpty) return;
-                        final v = barcodes.first.rawValue;
-                        if (v != null) {
-                          _handleScannedAnswer(v);
-                        }
-                      },
+              if (_cameraAvailable) ...[
+                OutlinedButton.icon(
+                  onPressed: _busy
+                      ? null
+                      : () => _setScannerVisible(!_showScanner),
+                  icon: Icon(
+                    _showScanner ? Icons.close : Icons.qr_code_scanner,
+                  ),
+                  label: Text(_showScanner ? 'Hide scanner' : 'Scan answer QR'),
+                ),
+                if (_showScanner && _scannerController != null) ...[
+                  const SizedBox(height: 12),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: SizedBox(
+                      height: 220,
+                      child: MobileScanner(
+                        controller: _scannerController!,
+                        onDetect: (capture) {
+                          final barcodes = capture.barcodes;
+                          if (barcodes.isEmpty) return;
+                          final v = barcodes.first.rawValue;
+                          if (v != null) {
+                            _handleScannedAnswer(v);
+                          }
+                        },
+                      ),
                     ),
                   ),
-                ),
+                ],
+                const SizedBox(height: 12),
               ],
-              const SizedBox(height: 12),
               TextField(
                 controller: _answerController,
                 minLines: 2,
