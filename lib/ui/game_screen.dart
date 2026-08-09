@@ -369,7 +369,9 @@ class _GameScreenState extends State<GameScreen> {
               title: Text(
                 state.phase == GamePhase.gameOver
                     ? 'Game over'
-                    : 'Round ${state.roundNumber}',
+                    : state.isTieBreaker
+                        ? 'Round ${state.roundNumber} · Tie-breaker'
+                        : 'Round ${state.roundNumber}',
               ),
               leading: IconButton(
                 icon: const Icon(Icons.close),
@@ -539,6 +541,22 @@ class _GameScreenState extends State<GameScreen> {
     );
   }
 
+  Widget _tieBreakerBanner(GameState state) {
+    if (!state.isTieBreaker) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+      child: Text(
+        'Tie-breaker — no point until you both agree on who wins.',
+        textAlign: TextAlign.center,
+        style: BlushTheme.body(
+          13,
+          weight: FontWeight.w600,
+          color: BlushTheme.roseDeep,
+        ),
+      ),
+    );
+  }
+
   Widget _selectPhase(GameState state) {
     final dryGuest = widget.controller.dryRunAwaitingGuestSubmit;
     // Both seats must still be able to submit while the other is already waiting.
@@ -567,13 +585,16 @@ class _GameScreenState extends State<GameScreen> {
         final hand = Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            _tieBreakerBanner(state),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Text(
                 dryHint ??
                     (state.localHasSubmitted && !widget.controller.dryRun
                         ? 'Waiting for your partner…'
-                        : 'Choose your most blush-worthy answer'),
+                        : state.isTieBreaker
+                            ? 'Pick again for the tie-breaker'
+                            : 'Choose your most blush-worthy answer'),
                 style: BlushTheme.body(14, color: BlushTheme.inkMuted),
               ),
             ),
@@ -647,6 +668,7 @@ class _GameScreenState extends State<GameScreen> {
       shrinkWrap: true,
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
       children: [
+        _tieBreakerBanner(state),
         Text(
           'Read aloud, then look into each other\'s eyes.',
           style: BlushTheme.body(14, color: BlushTheme.inkMuted),
@@ -783,6 +805,7 @@ class _GameScreenState extends State<GameScreen> {
       shrinkWrap: true,
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
       children: [
+        _tieBreakerBanner(state),
         Text(
           state.message ?? 'Who broke first?',
           style: BlushTheme.body(15, color: BlushTheme.inkMuted),
@@ -809,17 +832,6 @@ class _GameScreenState extends State<GameScreen> {
           onPressed: () => widget.controller.voteReactionWinner(state.guest.id),
           style: ElevatedButton.styleFrom(backgroundColor: BlushTheme.roseDeep),
           child: Text('${state.guest.name} wins the round'),
-        ),
-        const SizedBox(height: 10),
-        OutlinedButton(
-          onPressed: () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Read the lines again: hold eye contact!'),
-              ),
-            );
-          },
-          child: const Text('Read again'),
         ),
         const SizedBox(height: 10),
         OutlinedButton.icon(

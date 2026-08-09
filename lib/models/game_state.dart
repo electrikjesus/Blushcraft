@@ -36,6 +36,7 @@ class GameState {
     this.guestReactionVote,
     this.riskayLevel = 0.5,
     this.gameMode = GameMode.romantic,
+    this.isTieBreaker = false,
   });
 
   final GamePhase phase;
@@ -65,6 +66,9 @@ class GameState {
 
   /// Deck mode (Romantic / Fresh Start / …). Locked at deal time.
   final GameMode gameMode;
+
+  /// True while resolving a reaction disagreement (same scored roundNumber).
+  final bool isTieBreaker;
 
   bool get isHost => localPlayerId == host.id;
   bool get isGuest => localPlayerId == guest.id;
@@ -108,6 +112,7 @@ class GameState {
     String? guestReactionVote,
     double? riskayLevel,
     GameMode? gameMode,
+    bool? isTieBreaker,
     bool clearStatement = false,
     bool clearSubmissions = false,
     bool clearVotes = false,
@@ -147,6 +152,7 @@ class GameState {
           clearVotes ? null : (guestReactionVote ?? this.guestReactionVote),
       riskayLevel: riskayLevel ?? this.riskayLevel,
       gameMode: gameMode ?? this.gameMode,
+      isTieBreaker: isTieBreaker ?? this.isTieBreaker,
     );
   }
 
@@ -173,6 +179,7 @@ class GameState {
         'guestReactionVote': guestReactionVote,
         'riskayLevel': riskayLevel,
         'gameMode': gameMode.wireName,
+        'isTieBreaker': isTieBreaker,
       };
 
   factory GameState.fromJson(Map<String, dynamic> json) {
@@ -204,6 +211,7 @@ class GameState {
       guestReactionVote: json['guestReactionVote'] as String?,
       riskayLevel: (json['riskayLevel'] as num?)?.toDouble() ?? 0.5,
       gameMode: GameMode.fromWire(json['gameMode'] as String?),
+      isTieBreaker: json['isTieBreaker'] as bool? ?? false,
     );
   }
 

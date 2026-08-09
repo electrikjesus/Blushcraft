@@ -187,7 +187,39 @@ class GameController extends ChangeNotifier {
       roundNumber: _state!.roundNumber + 1,
       clearSubmissions: true,
       clearVotes: true,
+      isTieBreaker: false,
       message: 'Pick your blush-worthy choice.',
+    );
+    notifyListeners();
+    await _broadcast();
+  }
+
+  /// After a reaction disagreement: same scored round, +1 card each, new line.
+  Future<void> _startTieBreakerRound() async {
+    if (_state == null || !isHost) return;
+
+    final hostHand = List<int>.from(_state!.hostHand)..addAll(_draw(1));
+    final guestHand = List<int>.from(_state!.guestHand)..addAll(_draw(1));
+
+    if (_statementDeck.isEmpty) {
+      _statementDeck = List<int>.from(_activeStatementIds)..shuffle(_rng);
+    }
+    final sid = _statementDeck.removeLast();
+    final statement = _cards.statementById(sid, mode: _gameMode)!;
+
+    blushLog('Game', 'votes disagree → tie-breaker round=${_state!.roundNumber}');
+
+    _state = _state!.copyWith(
+      phase: GamePhase.selecting,
+      statementId: sid,
+      statementText: statement.text,
+      hostHand: hostHand,
+      guestHand: guestHand,
+      clearSubmissions: true,
+      clearVotes: true,
+      isTieBreaker: true,
+      message:
+          'Tie-breaker: pick again — no point until you agree who wins.',
     );
     notifyListeners();
     await _broadcast();
@@ -355,10 +387,7 @@ class GameController extends ChangeNotifier {
       if (_state!.votesAgree) {
         await _awardPoint(_state!.hostReactionVote!);
       } else {
-        _state = _state!.copyWith(
-          clearVotes: true,
-          message: 'No agreement: read again while holding eye contact!',
-        );
+        await _startTieBreakerRound();
       }
     } else {
       _state = _state!.copyWith(
@@ -366,10 +395,9 @@ class GameController extends ChangeNotifier {
             ? 'Confirm from the other seat…'
             : 'Waiting for partner to confirm…',
       );
+      notifyListeners();
+      await _broadcast();
     }
-
-    notifyListeners();
-    await _broadcast();
   }
 
   Future<void> _awardPoint(String winnerId) async {
@@ -416,6 +444,7 @@ class GameController extends ChangeNotifier {
           : '${hostWins ? host.name : guest.name} takes the point.',
       clearSubmissions: true,
       clearVotes: true,
+      isTieBreaker: false,
     );
 
     if (gameOver) {

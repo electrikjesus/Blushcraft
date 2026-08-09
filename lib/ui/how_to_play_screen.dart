@@ -39,7 +39,9 @@ class HowToPlayScreen extends StatelessWidget {
             _section(
               '4. Reaction check',
               'Whoever blushes, laughs/smiles first, or breaks eye contact loses the round: '
-              'the other player gets the point. If you disagree, read again while holding eye contact. '
+              'the other player gets the point. If you disagree, you play a tie-breaker: '
+              'each gets an extra choice card and a new statement, then submit, reveal, and vote again '
+              'until you agree — only then is the point awarded. '
               'Reaction camera and mic stay off until you allow them. You can set them up in the '
               'lobby or tap the icons in-game, agree to the short consent prompt, then turn either '
               'off anytime. Your partner only sees or hears you after you opt in.',
