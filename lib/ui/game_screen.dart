@@ -10,13 +10,17 @@ import '../../camera/reaction_camera.dart';
 import '../../models/game_state.dart';
 import '../../networking/game_message.dart';
 import '../../networking/game_transport.dart';
+import '../../networking/webrtc/lan_webrtc_video.dart';
 import '../../networking/webrtc/webrtc_qr_session.dart';
 import '../../share/share_service.dart';
+import '../../state/chat_controller.dart';
 import '../../state/game_controller.dart';
 import '../../util/blush_log.dart';
+import '../../util/camera_availability.dart';
 import 'av_consent.dart';
 import 'theme.dart';
 import 'widgets/card_face.dart';
+import 'widgets/chat_panel.dart';
 import 'widgets/hand_strip.dart';
 import 'widgets/reaction_pip.dart';
 import 'widgets/score_pips.dart';
@@ -27,11 +31,13 @@ class GameScreen extends StatefulWidget {
     super.key,
     required this.controller,
     this.session,
+    this.chat,
     required this.onLeave,
   });
 
   final GameController controller;
   final GameSession? session;
+  final ChatController? chat;
   final VoidCallback onLeave;
 
   @override
@@ -45,13 +51,17 @@ class _GameScreenState extends State<GameScreen> {
   String? _peerFrameBase64;
   Timer? _frameTimer;
   final _prizeController = TextEditingController();
-  DateTime _lastAudioSent = DateTime.fromMillisecondsSinceEpoch(0);
   ReactionAvLayoutPref _avLayoutPref = ReactionAvLayoutPref.auto;
   static const _avLayoutPrefKey = 'blushcraft_av_layout';
   bool _avConsentGiven = false;
   bool _avInitAttempted = false;
   bool _avInitFailed = false;
   int _frameFailStreak = 0;
+  int _audioSendWireSeq = 0;
+  DateTime? _lastAudioWireLog;
+  DateTime? _lastLevelPrivacySend;
+  Timer? _levelPrivacyTimer;
+  LanWebrtcVideo? _lanVideo;
 
   LocalDiscoverySession? get _local =>
       widget.session is LocalDiscoverySession
@@ -63,7 +73,18 @@ class _GameScreenState extends State<GameScreen> {
           ? widget.session as WebRtcQrSession
           : null;
 
+  /// Online path: A/V both on WebRTC tracks.
   bool get _useWebRtcMedia => _webrtc != null;
+
+  /// Local live video uses WebRTC; JPEG stills are retired for Local.
+  bool get _wantLanRtcVideo =>
+      _local != null &&
+      _av.bothLiveViewEnabled &&
+      !_av.audioOnlyLiveMedia;
+
+  /// Prefer getUserMedia via LAN WebRTC over CameraController when live media is on.
+  bool get _preferLanRtcCamera =>
+      _local != null && _av.liveViewEnabled && _av.deviceHasCamera;
 
   static const _prizePresets = [
     'Foot massage',
@@ -80,34 +101,85 @@ class _GameScreenState extends State<GameScreen> {
       if (!mounted || !_av.peerCameraEnabled) return;
       setState(() => _peerFrameBase64 = b64);
     };
-    widget.controller.onPeerAudio = (id, b64) async {
-      if (!_av.peerMicEnabled) return;
+    widget.controller.onPeerAudio = (id, b64, {required mime}) async {
+      if (!_av.peerMicEnabled) {
+        blushLog('Audio', 'wire recv dropped peerMic=false mime=$mime');
+        return;
+      }
       try {
-        await _av.playPeerAudio(base64Decode(b64));
-      } catch (_) {}
+        final bytes = base64Decode(b64);
+        await _av.playPeerAudio(bytes, mime: mime);
+      } catch (e) {
+        blushLog('Audio', 'wire recv play failed: $e');
+      }
     };
-    widget.controller.onAvPrivacy = (id, {required cameraEnabled, required micEnabled}) {
+    widget.controller.onAvPrivacy = (id, {
+      required cameraEnabled,
+      required micEnabled,
+      required liveViewEnabled,
+      required hasCamera,
+      required audioLevel,
+    }) {
       if (!mounted) return;
-      _av.setPeerPrivacy(cameraOn: cameraEnabled, micOn: micEnabled);
+      final peerLiveBefore = _av.peerLiveViewEnabled;
+      _av.setPeerPrivacy(
+        cameraOn: cameraEnabled,
+        micOn: micEnabled,
+        liveViewOn: liveViewEnabled,
+        hasCamera: hasCamera,
+        audioLevel: audioLevel,
+      );
+      blushLog(
+        'AV',
+        'peer privacy cam=$cameraEnabled mic=$micEnabled '
+        'live=$liveViewEnabled hasCam=$hasCamera lvl=${audioLevel.toStringAsFixed(2)}',
+      );
       if (!cameraEnabled) {
         setState(() => _peerFrameBase64 = null);
       } else {
         setState(() {});
       }
+      unawaited(_syncLanVideo());
+      // Handshake: lobby → game remounts wipe peer flags. When the peer
+      // announces (especially live media), echo ours so both GameScreens sync.
+      if (liveViewEnabled && !peerLiveBefore) {
+        unawaited(_publishPrivacy());
+      } else {
+        unawaited(_publishPrivacyThrottled());
+      }
     };
-    _av.onLocalAudioChunk = (bytes) {
-      if (_useWebRtcMedia) return; // audio via WebRTC tracks
+    widget.controller.onWebrtcVideoSignal = (msg) {
+      unawaited(_onLanVideoSignal(msg));
+    };
+    _av.onLocalAudioChunk = (bytes, mime) {
+      if (_useWebRtcMedia) return; // Online: audio via WebRTC tracks
       final session = widget.session;
-      if (session == null || !session.isConnected) return;
-      if (!_av.micEnabled) return;
+      if (session == null || !session.isConnected) {
+        blushLog('Audio', 'wire send skip notConnected bytes=${bytes.length}');
+        return;
+      }
+      if (!_av.micEnabled) {
+        blushLog('Audio', 'wire send skip micOff');
+        return;
+      }
+      if (bytes.isEmpty) return;
+      _audioSendWireSeq++;
+      final b64 = base64Encode(bytes);
       final now = DateTime.now();
-      if (now.difference(_lastAudioSent).inMilliseconds < 220) return;
-      if (bytes.length > 12 * 1024) return;
-      _lastAudioSent = now;
+      if (_lastAudioWireLog == null ||
+          now.difference(_lastAudioWireLog!) > const Duration(seconds: 2)) {
+        _lastAudioWireLog = now;
+        blushLog(
+          'Audio',
+          'wire send #$_audioSendWireSeq raw=${bytes.length} '
+          'b64=${b64.length} mime=$mime',
+        );
+      }
       session.send(
         PeerAudioMessage(
           playerId: widget.controller.localPlayerId,
-          base64Aac: base64Encode(bytes),
+          base64Aac: b64,
+          mime: mime,
         ),
       );
     };
@@ -121,19 +193,28 @@ class _GameScreenState extends State<GameScreen> {
     final prefs = await SharedPreferences.getInstance();
     _avConsentGiven = await loadAvConsentGiven();
     final wants = await loadAvWantFlags();
+    final hasCam = await deviceHasUsableCamera();
+    await _av.setDeviceHasCamera(hasCam);
     if (!mounted) return;
     setState(() {
       _avLayoutPref =
           ReactionAvLayoutPref.fromStorage(prefs.getString(_avLayoutPrefKey));
     });
     if (!_avConsentGiven) return;
-    if (wants.camera || wants.mic) {
-      if (wants.camera && !_useWebRtcMedia) {
-        await _av.init();
+    if (wants.camera || wants.mic || wants.liveView) {
+      if ((wants.camera || wants.liveView || wants.mic) && !_useWebRtcMedia) {
+        final openCamera =
+            wants.camera && !(_local != null && wants.liveView && hasCam);
+        await _av.init(openCamera: openCamera);
       }
-      if (wants.camera) await _av.setCameraEnabled(true);
-      if (wants.mic) await _av.setMicEnabled(true);
+      // Never force camera on cameraless devices.
+      if (wants.camera && hasCam) await _av.setCameraEnabled(true);
+      if (wants.mic || (wants.liveView && !hasCam)) {
+        await _av.setMicEnabled(true);
+      }
+      if (wants.liveView) await _av.setLiveViewEnabled(true);
       if (mounted) setState(() {});
+      await _publishPrivacy();
       _onGame();
     }
   }
@@ -142,6 +223,7 @@ class _GameScreenState extends State<GameScreen> {
     await saveAvWantFlags(
       camera: _av.cameraEnabled,
       mic: _av.micEnabled,
+      liveView: _av.liveViewEnabled,
     );
   }
 
@@ -160,10 +242,28 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   void _onAvChanged() {
+    final phase = widget.controller.state?.phase;
+    // JPEG stills only as rare fallback — Local video is WebRTC now.
+    if (_shouldStreamAv(phase) &&
+        _av.cameraEnabled &&
+        _av.liveViewEnabled &&
+        !_av.audioOnlyLiveMedia &&
+        !_useWebRtcMedia &&
+        !_wantLanRtcVideo) {
+      _startFrames();
+    } else {
+      _stopFrames();
+    }
+    unawaited(_syncLanVideo());
+    _syncLevelPrivacyTimer();
     if (mounted) setState(() {});
   }
 
   void _onWebRtcChanged() {
+    if (mounted) setState(() {});
+  }
+
+  void _onLanVideoChanged() {
     if (mounted) setState(() {});
   }
 
@@ -174,14 +274,72 @@ class _GameScreenState extends State<GameScreen> {
       unawaited(_publishPrivacy());
       if (_useWebRtcMedia) {
         unawaited(_syncWebRtcTracks());
-      } else if (_av.cameraEnabled || _av.micEnabled) {
+      } else if (_av.cameraEnabled || _av.micEnabled || _av.liveViewEnabled) {
         unawaited(_ensureAv());
       }
+      unawaited(_syncLanVideo());
+      if (!_av.liveViewEnabled || !_av.cameraEnabled || _wantLanRtcVideo) {
+        _stopFrames();
+      }
+      _syncLevelPrivacyTimer();
     } else {
       _stopFrames();
       unawaited(_av.stopMic());
+      unawaited(_lanVideo?.stop());
+      _levelPrivacyTimer?.cancel();
+      _levelPrivacyTimer = null;
     }
     if (mounted) setState(() {});
+  }
+
+  Future<void> _onLanVideoSignal(WebrtcVideoSignalMessage msg) async {
+    if (_useWebRtcMedia || _local == null) return;
+    final session = widget.session;
+    if (session == null || !session.isConnected) return;
+    if (_lanVideo == null) {
+      _lanVideo = LanWebrtcVideo(
+        isHost: widget.controller.isHost,
+        send: session.send,
+      );
+      _lanVideo!.addListener(_onLanVideoChanged);
+      blushLog(
+        'LanRTC',
+        'create bridge on signal isHost=${widget.controller.isHost}',
+      );
+    }
+    await _lanVideo!.handleSignal(msg);
+  }
+
+  Future<void> _syncLanVideo() async {
+    if (_useWebRtcMedia || _local == null) return;
+    final session = widget.session;
+    if (session == null || !session.isConnected) return;
+
+    if (!_wantLanRtcVideo) {
+      if (_lanVideo != null) {
+        blushLog('LanRTC', 'teardown (audio-only or live media off)');
+        await _lanVideo!.stop();
+        _lanVideo!.removeListener(_onLanVideoChanged);
+        _lanVideo!.dispose();
+        _lanVideo = null;
+        if (mounted) setState(() {});
+      }
+      return;
+    }
+
+    if (_lanVideo == null) {
+      _lanVideo = LanWebrtcVideo(
+        isHost: widget.controller.isHost,
+        send: session.send,
+      );
+      _lanVideo!.addListener(_onLanVideoChanged);
+      blushLog(
+        'LanRTC',
+        'create bridge isHost=${widget.controller.isHost}',
+      );
+    }
+    await _lanVideo!.ensureStarted();
+    await _lanVideo!.setLocalVideoEnabled(_av.cameraEnabled);
   }
 
   Future<void> _syncWebRtcTracks() async {
@@ -210,30 +368,38 @@ class _GameScreenState extends State<GameScreen> {
   Future<void> _ensureAv() async {
     // Don't hammer init every state tick when cameras are missing/broken.
     if (_avInitFailed) return;
-    if (!_av.ready && _avInitAttempted && !_av.initializing) {
+    if (!_av.initialized && _avInitAttempted && !_av.initializing) {
       _avInitFailed = true;
-      blushLog('AV', 'camera init failed — continuing without peer frames');
+      blushLog('AV', 'av init failed — continuing (mic/video may be limited)');
       _stopFrames();
       return;
     }
     _avInitAttempted = true;
-    final ok = await _av.init();
+    // Local WebRTC owns the camera device — avoid CameraController conflict.
+    final openCamera = !_preferLanRtcCamera && !_useWebRtcMedia;
+    final ok = await _av.init(openCamera: openCamera);
     if (!ok || !mounted) {
       if (!_av.initializing) {
         _avInitFailed = true;
-        blushLog('AV', 'camera unavailable (${_av.error}) — game continues');
+        blushLog('AV', 'av unavailable (${_av.error}) — game continues');
         _stopFrames();
       }
       return;
     }
     _avInitFailed = false;
-    if (_av.cameraEnabled) {
+    if (_av.cameraEnabled &&
+        _av.liveViewEnabled &&
+        !_av.audioOnlyLiveMedia &&
+        !_wantLanRtcVideo) {
       _startFrames();
+    } else {
+      _stopFrames();
     }
     if (_av.micEnabled) {
       await _av.startMic();
     }
     await _publishPrivacy();
+    await _syncLanVideo();
   }
 
   Future<bool> _confirmAvConsent() async {
@@ -251,29 +417,64 @@ class _GameScreenState extends State<GameScreen> {
         playerId: widget.controller.localPlayerId,
         cameraEnabled: _av.cameraEnabled,
         micEnabled: _av.micEnabled,
+        liveViewEnabled: _av.liveViewEnabled,
+        hasCamera: _av.deviceHasCamera,
+        audioLevel: _av.localDisplayAudioLevel,
       ),
     );
   }
 
+  Future<void> _publishPrivacyThrottled() async {
+    final now = DateTime.now();
+    if (_lastLevelPrivacySend != null &&
+        now.difference(_lastLevelPrivacySend!) <
+            const Duration(milliseconds: 300)) {
+      return;
+    }
+    _lastLevelPrivacySend = now;
+    await _publishPrivacy();
+  }
+
+  void _syncLevelPrivacyTimer() {
+    final need = _av.micEnabled &&
+        _shouldStreamAv(widget.controller.state?.phase) &&
+        widget.session?.isConnected == true;
+    if (!need) {
+      _levelPrivacyTimer?.cancel();
+      _levelPrivacyTimer = null;
+      return;
+    }
+    if (_levelPrivacyTimer != null) return;
+    _levelPrivacyTimer =
+        Timer.periodic(const Duration(milliseconds: 250), (_) {
+      if (!_av.micEnabled) return;
+      unawaited(_publishPrivacyThrottled());
+    });
+  }
+
   void _startFrames() {
     if (_useWebRtcMedia) return;
-    if (!_av.ready || !_av.cameraEnabled) return;
+    if (!_av.ready || !_av.cameraEnabled || !_av.liveViewEnabled) return;
     _frameFailStreak = 0;
     _frameTimer?.cancel();
-    _frameTimer = Timer.periodic(const Duration(milliseconds: 900), (_) async {
+    // ~2.5 fps target after compress; serialize captures to avoid overlap.
+    _frameTimer = Timer.periodic(const Duration(milliseconds: 400), (_) async {
       if (!_av.cameraEnabled || !_av.ready) return;
-      final b64 = await _av.captureBase64Jpeg();
+      final b64 = await _av.captureBase64Jpeg(maxWidth: 320, quality: 55);
       if (b64 == null) {
         _frameFailStreak++;
-        if (_frameFailStreak >= 3) {
-          blushLog('AV', 'capture failing — stopping peer frames');
-          _stopFrames();
+        // Soft backoff — keep trying; do not permanently kill the timer.
+        if (_frameFailStreak == 8) {
+          blushLog('AV', 'capture struggling — still retrying');
         }
         return;
       }
       _frameFailStreak = 0;
-      // Keep LAN free for game messages; drop oversized snapshots.
-      if (b64.length > 24 * 1024) return;
+      // Compressed frames should land well under this; drop pathological blobs.
+      if (b64.length > 48 * 1024) {
+        blushLog('AV', 'drop oversized peer frame chars=${b64.length}');
+        return;
+      }
       final session = widget.session;
       if (session == null || !session.isConnected) return;
       await session.send(
@@ -291,23 +492,28 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   Future<void> _toggleCamera() async {
+    if (!_av.deviceHasCamera) return;
     if (_av.cameraEnabled) {
       await _av.setCameraEnabled(false);
       _stopFrames();
+      await _lanVideo?.setLocalVideoEnabled(false);
     } else {
       final ok = await _confirmAvConsent();
       if (!ok || !mounted) return;
-      if (!_useWebRtcMedia) {
+      if (!_useWebRtcMedia && !_preferLanRtcCamera) {
         _avInitFailed = false;
         _avInitAttempted = false;
-        final ready = await _av.init();
+        final ready = await _av.init(openCamera: true);
         if (!ready || !mounted) {
           blushLog('AV', 'camera still unavailable — leaving camera off');
           return;
         }
       }
       await _av.setCameraEnabled(true);
-      if (!_useWebRtcMedia) {
+      if (_preferLanRtcCamera || _wantLanRtcVideo) {
+        await _syncLanVideo();
+        await _lanVideo?.setLocalVideoEnabled(true);
+      } else if (!_useWebRtcMedia) {
         _startFrames();
       }
     }
@@ -338,13 +544,18 @@ class _GameScreenState extends State<GameScreen> {
   @override
   void dispose() {
     _stopFrames();
+    _levelPrivacyTimer?.cancel();
     widget.controller.removeListener(_onGame);
     widget.controller.onPeerFrame = null;
     widget.controller.onPeerAudio = null;
     widget.controller.onAvPrivacy = null;
+    widget.controller.onWebrtcVideoSignal = null;
     _av.onLocalAudioChunk = null;
     _av.removeListener(_onAvChanged);
     _webrtc?.removeListener(_onWebRtcChanged);
+    _lanVideo?.removeListener(_onLanVideoChanged);
+    _lanVideo?.dispose();
+    _lanVideo = null;
     _av.dispose();
     _prizeController.dispose();
     super.dispose();
@@ -377,10 +588,37 @@ class _GameScreenState extends State<GameScreen> {
                 icon: const Icon(Icons.close),
                 onPressed: widget.onLeave,
               ),
+              actions: [
+                if (widget.chat != null &&
+                    !widget.controller.dryRun &&
+                    widget.session != null)
+                  ChatAppBarButton(
+                    chat: widget.chat!,
+                    partnerName: state.remotePlayer.name,
+                    enabled: widget.session!.isConnected,
+                    captureReactionSelfie: (_av.cameraEnabled && _av.ready)
+                        ? () => _av.captureBase64Jpeg()
+                        : null,
+                    onVoiceNoteRecording: (recording) async {
+                      if (recording) {
+                        await _av.stopMic();
+                      } else if (_av.micEnabled) {
+                        await _av.startMic();
+                      }
+                    },
+                  ),
+              ],
             ),
             body: SafeArea(
               child: Column(
                 children: [
+                  if (widget.chat != null)
+                    ChatInviteBanner(
+                      chat: widget.chat!,
+                      partnerName: state.remotePlayer.name,
+                    ),
+                  if (widget.chat != null)
+                    ChatIncomingToast(chat: widget.chat!),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                     child: ScorePips(
@@ -393,7 +631,8 @@ class _GameScreenState extends State<GameScreen> {
                   ),
                   const SizedBox(height: 8),
                   Expanded(
-                    child: _shouldStreamAv(state.phase)
+                    child: (_shouldStreamAv(state.phase) &&
+                            _av.bothLiveViewEnabled)
                         ? _withReactionPip(state, _bodyFor(state))
                         : _bodyFor(state),
                   ),
@@ -418,6 +657,7 @@ class _GameScreenState extends State<GameScreen> {
     }
 
     final rtc = _webrtc;
+    final lan = _lanVideo;
     Widget? peerVideo;
     Widget? localVideo;
     if (rtc != null) {
@@ -431,33 +671,44 @@ class _GameScreenState extends State<GameScreen> {
         objectFit: RTCVideoViewObjectFit.RTCVideoViewObjectFitCover,
         mirror: true,
       );
+    } else if (lan != null && lan.mediaReady) {
+      peerVideo = RTCVideoView(
+        lan.remoteRenderer,
+        objectFit: RTCVideoViewObjectFit.RTCVideoViewObjectFitCover,
+        mirror: true,
+      );
+      localVideo = RTCVideoView(
+        lan.localRenderer,
+        objectFit: RTCVideoViewObjectFit.RTCVideoViewObjectFitCover,
+        mirror: true,
+      );
     }
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final layout = _avLayoutPref.resolve(width: constraints.maxWidth);
+        final metrics = ReactionAvMetrics.forWidth(constraints.maxWidth);
+        final layout = _av.audioOnlyLiveMedia
+            ? ReactionAvLayout.strip
+            : _avLayoutPref.resolve(width: constraints.maxWidth);
         final panel = ReactionAvPanel(
           av: _av,
           layout: layout,
           layoutPref: _avLayoutPref,
+          metrics: metrics,
           peerJpeg: peerBytes,
           peerVideo: peerVideo,
           localVideo: localVideo,
           onToggleCamera: _toggleCamera,
           onToggleMic: _toggleMic,
           onCycleLayout: _cycleAvLayout,
-          expand: layout == ReactionAvLayout.strip,
         );
 
         if (layout == ReactionAvLayout.strip) {
-          // Grow the phone camera strip into leftover space, but cap it so
-          // reveal / reaction / result controls stay on-screen.
-          final pipHeight = (constraints.maxHeight * 0.36)
-              .clamp(ReactionAvPanel.stripHeight, 220.0);
+          // Content-sized media row — game content keeps the remaining space.
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              SizedBox(height: pipHeight, child: panel),
+              panel,
               Expanded(
                 child: LayoutBuilder(
                   builder: (context, bodyConstraints) {
@@ -496,7 +747,7 @@ class _GameScreenState extends State<GameScreen> {
             Positioned.fill(
               child: Padding(
                 padding: EdgeInsets.only(
-                  right: ReactionAvPanel.sideReserveWidth(layout),
+                  right: metrics.sideReserveWidth(layout),
                 ),
                 child: child,
               ),

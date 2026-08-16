@@ -5,7 +5,11 @@
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Blushcraft uses the microphone during the reaction check so you and your partner can hear each other. You can mute anytime.</string>
 	<key>NSCameraUsageDescription</key>
-	<string>Blushcraft uses the front camera during the reaction check so you can see blushing moments and optionally share a selfie.</string>
+	<string>Blushcraft uses the front camera during the reaction check and for optional chat photos. You can turn the camera off anytime.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Blushcraft lets you pick a photo from your library to share in optional peer chat after both of you Allow chat.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Blushcraft does not save chat photos to your library; this may be required by the photo picker on some iOS versions.</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Blushcraft uses the local network to sync a game with a partner on the same Wi‑Fi.</string>
 	<key>NSBonjourServices</key>

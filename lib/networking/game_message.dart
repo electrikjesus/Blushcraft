@@ -30,6 +30,8 @@ sealed class GameMessage {
         return PeerAudioMessage.fromJson(map);
       case AvPrivacyMessage.typeName:
         return AvPrivacyMessage.fromJson(map);
+      case WebrtcVideoSignalMessage.typeName:
+        return WebrtcVideoSignalMessage.fromJson(map);
       case StartGameMessage.typeName:
         return const StartGameMessage();
       case NextRoundMessage.typeName:
@@ -40,6 +42,18 @@ sealed class GameMessage {
         return SetRiskayMessage.fromJson(map);
       case SetGameModeMessage.typeName:
         return SetGameModeMessage.fromJson(map);
+      case ChatInviteMessage.typeName:
+        return ChatInviteMessage.fromJson(map);
+      case ChatInviteReplyMessage.typeName:
+        return ChatInviteReplyMessage.fromJson(map);
+      case ChatEndMessage.typeName:
+        return ChatEndMessage.fromJson(map);
+      case ChatTextMessage.typeName:
+        return ChatTextMessage.fromJson(map);
+      case ChatPhotoMessage.typeName:
+        return ChatPhotoMessage.fromJson(map);
+      case ChatAudioMessage.typeName:
+        return ChatAudioMessage.fromJson(map);
       default:
         throw FormatException('Unknown GameMessage type: $type');
     }
@@ -237,17 +251,21 @@ class PeerFrameMessage extends GameMessage {
   }
 }
 
-/// AAC audio chunk for reaction-phase voice (throttled by sender).
+/// Encoded audio chunk for reaction-phase voice (throttled/buffered by sender).
 class PeerAudioMessage extends GameMessage {
   const PeerAudioMessage({
     required this.playerId,
     required this.base64Aac,
+    this.mime = 'audio/aac',
   });
 
   static const typeName = 'peer_audio';
 
   final String playerId;
   final String base64Aac;
+
+  /// Wire mime for playback (`audio/aac`, `audio/ogg`, …).
+  final String mime;
 
   @override
   String get type => typeName;
@@ -256,12 +274,14 @@ class PeerAudioMessage extends GameMessage {
   Map<String, dynamic> toJson() => {
         'playerId': playerId,
         'base64Aac': base64Aac,
+        'mime': mime,
       };
 
   factory PeerAudioMessage.fromJson(Map<String, dynamic> json) {
     return PeerAudioMessage(
       playerId: json['playerId'] as String,
       base64Aac: json['base64Aac'] as String,
+      mime: json['mime'] as String? ?? 'audio/aac',
     );
   }
 }
@@ -272,6 +292,9 @@ class AvPrivacyMessage extends GameMessage {
     required this.playerId,
     required this.cameraEnabled,
     required this.micEnabled,
+    this.liveViewEnabled = false,
+    this.hasCamera = true,
+    this.audioLevel = 0,
   });
 
   static const typeName = 'av_privacy';
@@ -279,6 +302,15 @@ class AvPrivacyMessage extends GameMessage {
   final String playerId;
   final bool cameraEnabled;
   final bool micEnabled;
+
+  /// When true, this player wants the mutual live media strip/panel.
+  final bool liveViewEnabled;
+
+  /// Device has a usable camera (false → prefer audio-only live media).
+  final bool hasCamera;
+
+  /// Local mic level 0–1 (for partner diagnostics UI).
+  final double audioLevel;
 
   @override
   String get type => typeName;
@@ -288,13 +320,66 @@ class AvPrivacyMessage extends GameMessage {
         'playerId': playerId,
         'cameraEnabled': cameraEnabled,
         'micEnabled': micEnabled,
+        'liveViewEnabled': liveViewEnabled,
+        'hasCamera': hasCamera,
+        'audioLevel': audioLevel,
       };
 
   factory AvPrivacyMessage.fromJson(Map<String, dynamic> json) {
+    final levelRaw = json['audioLevel'];
+    final level = levelRaw is num ? levelRaw.toDouble() : 0.0;
     return AvPrivacyMessage(
       playerId: json['playerId'] as String,
       cameraEnabled: json['cameraEnabled'] as bool? ?? false,
       micEnabled: json['micEnabled'] as bool? ?? false,
+      liveViewEnabled: json['liveViewEnabled'] as bool? ?? false,
+      // Older clients omit this — assume they may have a camera.
+      hasCamera: json['hasCamera'] as bool? ?? true,
+      audioLevel: level.clamp(0.0, 1.0),
+    );
+  }
+}
+
+/// LAN WebRTC video signaling (offer / answer / ICE / bye) over the game socket.
+///
+/// Audio stays on [PeerAudioMessage]; this is video-only.
+class WebrtcVideoSignalMessage extends GameMessage {
+  const WebrtcVideoSignalMessage({
+    required this.op,
+    this.sdp,
+    this.candidate,
+    this.sdpMid,
+    this.sdpMLineIndex,
+  });
+
+  static const typeName = 'webrtc_video';
+
+  /// `offer` | `answer` | `ice` | `bye`
+  final String op;
+  final String? sdp;
+  final String? candidate;
+  final String? sdpMid;
+  final int? sdpMLineIndex;
+
+  @override
+  String get type => typeName;
+
+  @override
+  Map<String, dynamic> toJson() => {
+        'op': op,
+        if (sdp != null) 'sdp': sdp,
+        if (candidate != null) 'candidate': candidate,
+        if (sdpMid != null) 'sdpMid': sdpMid,
+        if (sdpMLineIndex != null) 'sdpMLineIndex': sdpMLineIndex,
+      };
+
+  factory WebrtcVideoSignalMessage.fromJson(Map<String, dynamic> json) {
+    return WebrtcVideoSignalMessage(
+      op: json['op'] as String,
+      sdp: json['sdp'] as String?,
+      candidate: json['candidate'] as String?,
+      sdpMid: json['sdpMid'] as String?,
+      sdpMLineIndex: json['sdpMLineIndex'] as int?,
     );
   }
 }
@@ -334,5 +419,191 @@ class SetGameModeMessage extends GameMessage {
 
   factory SetGameModeMessage.fromJson(Map<String, dynamic> json) {
     return SetGameModeMessage(gameMode: json['gameMode'] as String);
+  }
+}
+
+/// Request mutual consent to open peer chat.
+class ChatInviteMessage extends GameMessage {
+  const ChatInviteMessage({required this.fromPlayerId});
+
+  static const typeName = 'chat_invite';
+
+  final String fromPlayerId;
+
+  @override
+  String get type => typeName;
+
+  @override
+  Map<String, dynamic> toJson() => {'fromPlayerId': fromPlayerId};
+
+  factory ChatInviteMessage.fromJson(Map<String, dynamic> json) {
+    return ChatInviteMessage(fromPlayerId: json['fromPlayerId'] as String);
+  }
+}
+
+class ChatInviteReplyMessage extends GameMessage {
+  const ChatInviteReplyMessage({
+    required this.fromPlayerId,
+    required this.accepted,
+  });
+
+  static const typeName = 'chat_invite_reply';
+
+  final String fromPlayerId;
+  final bool accepted;
+
+  @override
+  String get type => typeName;
+
+  @override
+  Map<String, dynamic> toJson() => {
+        'fromPlayerId': fromPlayerId,
+        'accepted': accepted,
+      };
+
+  factory ChatInviteReplyMessage.fromJson(Map<String, dynamic> json) {
+    return ChatInviteReplyMessage(
+      fromPlayerId: json['fromPlayerId'] as String,
+      accepted: json['accepted'] as bool? ?? false,
+    );
+  }
+}
+
+class ChatEndMessage extends GameMessage {
+  const ChatEndMessage({required this.fromPlayerId});
+
+  static const typeName = 'chat_end';
+
+  final String fromPlayerId;
+
+  @override
+  String get type => typeName;
+
+  @override
+  Map<String, dynamic> toJson() => {'fromPlayerId': fromPlayerId};
+
+  factory ChatEndMessage.fromJson(Map<String, dynamic> json) {
+    return ChatEndMessage(fromPlayerId: json['fromPlayerId'] as String);
+  }
+}
+
+class ChatTextMessage extends GameMessage {
+  const ChatTextMessage({
+    required this.fromPlayerId,
+    required this.id,
+    required this.text,
+    required this.sentAtMs,
+  });
+
+  static const typeName = 'chat_text';
+
+  final String fromPlayerId;
+  final String id;
+  final String text;
+  final int sentAtMs;
+
+  @override
+  String get type => typeName;
+
+  @override
+  Map<String, dynamic> toJson() => {
+        'fromPlayerId': fromPlayerId,
+        'id': id,
+        'text': text,
+        'sentAtMs': sentAtMs,
+      };
+
+  factory ChatTextMessage.fromJson(Map<String, dynamic> json) {
+    return ChatTextMessage(
+      fromPlayerId: json['fromPlayerId'] as String,
+      id: json['id'] as String,
+      text: json['text'] as String,
+      sentAtMs: json['sentAtMs'] as int? ?? 0,
+    );
+  }
+}
+
+class ChatPhotoMessage extends GameMessage {
+  const ChatPhotoMessage({
+    required this.fromPlayerId,
+    required this.id,
+    required this.mime,
+    required this.base64Jpeg,
+    required this.sentAtMs,
+  });
+
+  static const typeName = 'chat_photo';
+
+  final String fromPlayerId;
+  final String id;
+  final String mime;
+  final String base64Jpeg;
+  final int sentAtMs;
+
+  @override
+  String get type => typeName;
+
+  @override
+  Map<String, dynamic> toJson() => {
+        'fromPlayerId': fromPlayerId,
+        'id': id,
+        'mime': mime,
+        'base64Jpeg': base64Jpeg,
+        'sentAtMs': sentAtMs,
+      };
+
+  factory ChatPhotoMessage.fromJson(Map<String, dynamic> json) {
+    return ChatPhotoMessage(
+      fromPlayerId: json['fromPlayerId'] as String,
+      id: json['id'] as String,
+      mime: json['mime'] as String? ?? 'image/jpeg',
+      base64Jpeg: json['base64Jpeg'] as String,
+      sentAtMs: json['sentAtMs'] as int? ?? 0,
+    );
+  }
+}
+
+/// Session chat voice note (compressed AAC/Opus, base64).
+class ChatAudioMessage extends GameMessage {
+  const ChatAudioMessage({
+    required this.fromPlayerId,
+    required this.id,
+    required this.mime,
+    required this.base64Audio,
+    required this.sentAtMs,
+    this.durationMs = 0,
+  });
+
+  static const typeName = 'chat_audio';
+
+  final String fromPlayerId;
+  final String id;
+  final String mime;
+  final String base64Audio;
+  final int sentAtMs;
+  final int durationMs;
+
+  @override
+  String get type => typeName;
+
+  @override
+  Map<String, dynamic> toJson() => {
+        'fromPlayerId': fromPlayerId,
+        'id': id,
+        'mime': mime,
+        'base64Audio': base64Audio,
+        'sentAtMs': sentAtMs,
+        'durationMs': durationMs,
+      };
+
+  factory ChatAudioMessage.fromJson(Map<String, dynamic> json) {
+    return ChatAudioMessage(
+      fromPlayerId: json['fromPlayerId'] as String,
+      id: json['id'] as String,
+      mime: json['mime'] as String? ?? 'audio/aac',
+      base64Audio: json['base64Audio'] as String,
+      sentAtMs: json['sentAtMs'] as int? ?? 0,
+      durationMs: json['durationMs'] as int? ?? 0,
+    );
   }
 }

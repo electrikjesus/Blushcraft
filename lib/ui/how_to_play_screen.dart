@@ -47,6 +47,23 @@ class HowToPlayScreen extends StatelessWidget {
               'off anytime. Your partner only sees or hears you after you opt in.',
             ),
             _section(
+              'Optional chat',
+              'While you are connected (lobby or in a round), either of you can invite the other to chat. '
+              'Nothing is sent until your partner taps Allow. You can share text, photos '
+              '(gallery, camera, or a reaction selfie if your cam is on), and short voice notes '
+              '(hold the mic in chat). Soft in-app sounds and toasts '
+              'announce new messages — not system notifications. Photos stay between these '
+              'two devices for this session only. Either of you can End chat anytime.',
+            ),
+            _section(
+              'Live media',
+              'In the lobby, enable “Show live media” on both devices to show the '
+              'media row during play. Your own mic/camera toggles stay separate. '
+              'If either of you has no camera, live media is audio-only with mic '
+              'controls. Live media needs both of you — otherwise the game UI '
+              'stays media-row free.',
+            ),
+            _section(
               'Connection drops',
               'If the local Wi‑Fi link drops mid-game, stay on the pause screen. The host keeps advertising; '
               'the partner searches and taps Connect again to resume the same round.',

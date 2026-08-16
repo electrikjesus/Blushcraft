@@ -41,6 +41,8 @@ dependencies:
   mobile_scanner: ^7.4.0
   wakelock_plus: ^1.7.0
   bonsoir: ^7.1.4
+  image_picker: ^1.2.3
+  image: ^4.8.0
 
 dev_dependencies:
   flutter_test:
@@ -80,6 +82,8 @@ flutter:
   assets:
     - assets/cards.json
     - assets/cards_fresh_start.json
+    - assets/sounds/chat_message.wav
+    - assets/sounds/chat_invite.wav
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

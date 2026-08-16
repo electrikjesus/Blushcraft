@@ -15,12 +15,20 @@ import 'stats_store.dart';
 
 typedef SendMessage = Future<void> Function(GameMessage message);
 typedef OnPeerFrame = void Function(String playerId, String base64Jpeg);
-typedef OnPeerAudio = void Function(String playerId, String base64Aac);
+typedef OnPeerAudio = void Function(
+  String playerId,
+  String base64Aac, {
+  required String mime,
+});
 typedef OnAvPrivacy = void Function(
   String playerId, {
   required bool cameraEnabled,
   required bool micEnabled,
+  required bool liveViewEnabled,
+  required bool hasCamera,
+  required double audioLevel,
 });
+typedef OnWebrtcVideoSignal = void Function(WebrtcVideoSignalMessage message);
 
 /// Host-authoritative game logic. Guests apply [StateSyncMessage] snapshots.
 class GameController extends ChangeNotifier {
@@ -51,6 +59,7 @@ class GameController extends ChangeNotifier {
   OnPeerFrame? onPeerFrame;
   OnPeerAudio? onPeerAudio;
   OnAvPrivacy? onAvPrivacy;
+  OnWebrtcVideoSignal? onWebrtcVideoSignal;
 
   GameState? _state;
   List<int> _statementDeck = [];
@@ -537,13 +546,26 @@ class GameController extends ChangeNotifier {
       case PeerFrameMessage m:
         onPeerFrame?.call(m.playerId, m.base64Jpeg);
       case PeerAudioMessage m:
-        onPeerAudio?.call(m.playerId, m.base64Aac);
+        onPeerAudio?.call(m.playerId, m.base64Aac, mime: m.mime);
       case AvPrivacyMessage m:
         onAvPrivacy?.call(
           m.playerId,
           cameraEnabled: m.cameraEnabled,
           micEnabled: m.micEnabled,
+          liveViewEnabled: m.liveViewEnabled,
+          hasCamera: m.hasCamera,
+          audioLevel: m.audioLevel,
         );
+      case WebrtcVideoSignalMessage m:
+        onWebrtcVideoSignal?.call(m);
+      case ChatInviteMessage():
+      case ChatInviteReplyMessage():
+      case ChatEndMessage():
+      case ChatTextMessage():
+      case ChatPhotoMessage():
+      case ChatAudioMessage():
+        // Routed in app._handleGameMessage before GameController.
+        break;
     }
   }
 

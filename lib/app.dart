@@ -8,6 +8,7 @@ import 'networking/game_message.dart';
 import 'networking/game_transport.dart';
 import 'networking/lan_game_session.dart';
 import 'networking/webrtc/webrtc_qr_session.dart';
+import 'state/chat_controller.dart';
 import 'state/game_controller.dart';
 import 'state/stats_store.dart';
 import 'ui/game_screen.dart';
@@ -47,6 +48,7 @@ class _AppRootState extends State<AppRoot> {
   CardRepository? _cards;
   StatsStore? _stats;
   GameController? _controller;
+  ChatController? _chat;
   GameSession? _session;
   AppScreen _screen = AppScreen.home;
   String _displayName = 'Player';
@@ -134,7 +136,11 @@ class _AppRootState extends State<AppRoot> {
       return;
     }
     if (msg is PeerAudioMessage) {
-      controller.onPeerAudio?.call(msg.playerId, msg.base64Aac);
+      controller.onPeerAudio?.call(
+        msg.playerId,
+        msg.base64Aac,
+        mime: msg.mime,
+      );
       return;
     }
     if (msg is AvPrivacyMessage) {
@@ -142,7 +148,23 @@ class _AppRootState extends State<AppRoot> {
         msg.playerId,
         cameraEnabled: msg.cameraEnabled,
         micEnabled: msg.micEnabled,
+        liveViewEnabled: msg.liveViewEnabled,
+        hasCamera: msg.hasCamera,
+        audioLevel: msg.audioLevel,
       );
+      return;
+    }
+    if (msg is WebrtcVideoSignalMessage) {
+      controller.onWebrtcVideoSignal?.call(msg);
+      return;
+    }
+    if (msg is ChatInviteMessage ||
+        msg is ChatInviteReplyMessage ||
+        msg is ChatEndMessage ||
+        msg is ChatTextMessage ||
+        msg is ChatPhotoMessage ||
+        msg is ChatAudioMessage) {
+      _chat?.onRemoteMessage(msg);
       return;
     }
     await controller.onMessage(msg);
@@ -157,13 +179,23 @@ class _AppRootState extends State<AppRoot> {
     }
   }
 
+  ChatController _attachChat(GameController controller, GameSession? session) {
+    final chat = ChatController(localPlayerId: controller.localPlayerId);
+    if (session != null) {
+      chat.bindSend(session.send);
+    }
+    return chat;
+  }
+
   Future<void> _leaveToHome() async {
     await _session?.stopAll();
     _session?.dispose();
     _controller?.dispose();
+    _chat?.dispose();
     setState(() {
       _session = null;
       _controller = null;
+      _chat = null;
       _screen = AppScreen.home;
     });
   }
@@ -203,6 +235,7 @@ class _AppRootState extends State<AppRoot> {
       }) async {
         if (!connected) {
           controller.markDisconnected();
+          _chat?.clearSession();
           await session.ensureHostingForReconnect();
           if (mounted) setState(() {});
           return;
@@ -217,9 +250,11 @@ class _AppRootState extends State<AppRoot> {
     controller.sendMessage = session.send;
     await controller.initLobby();
     await session.startHosting();
+    final chat = _attachChat(controller, session);
 
     setState(() {
       _controller = controller;
+      _chat = chat;
       _session = session;
       _screen = AppScreen.lobby;
     });
@@ -245,6 +280,7 @@ class _AppRootState extends State<AppRoot> {
       }) async {
         if (!connected) {
           controller.markDisconnected();
+          _chat?.clearSession();
           await session.beginReconnectDiscovery();
           if (mounted) setState(() {});
           return;
@@ -259,9 +295,11 @@ class _AppRootState extends State<AppRoot> {
     controller.sendMessage = session.send;
     await controller.initLobby();
     await session.startJoining();
+    final chat = _attachChat(controller, session);
 
     setState(() {
       _controller = controller;
+      _chat = chat;
       _session = session;
       _screen = AppScreen.lobby;
     });
@@ -282,6 +320,7 @@ class _AppRootState extends State<AppRoot> {
       }) {
         if (!connected) {
           controller.markDisconnected();
+          _chat?.clearSession();
           if (mounted) setState(() {});
           return;
         }
@@ -298,9 +337,11 @@ class _AppRootState extends State<AppRoot> {
 
     controller.sendMessage = session.send;
     await controller.initLobby();
+    final chat = _attachChat(controller, session);
 
     setState(() {
       _controller = controller;
+      _chat = chat;
       _session = session;
       _screen = AppScreen.onlineHost;
     });
@@ -326,6 +367,7 @@ class _AppRootState extends State<AppRoot> {
       }) async {
         if (!connected) {
           controller.markDisconnected();
+          _chat?.clearSession();
           if (mounted) setState(() {});
           return;
         }
@@ -342,9 +384,11 @@ class _AppRootState extends State<AppRoot> {
 
     controller.sendMessage = session.send;
     await controller.initLobby();
+    final chat = _attachChat(controller, session);
 
     setState(() {
       _controller = controller;
+      _chat = chat;
       _session = session;
       _screen = AppScreen.onlineJoin;
     });
@@ -356,6 +400,7 @@ class _AppRootState extends State<AppRoot> {
     await controller.initLobby(guestName: 'Partner');
     setState(() {
       _controller = controller;
+      _chat = null;
       _session = null;
       _screen = AppScreen.lobby;
     });
@@ -397,6 +442,7 @@ class _AppRootState extends State<AppRoot> {
   void dispose() {
     _session?.dispose();
     _controller?.dispose();
+    _chat?.dispose();
     super.dispose();
   }
 
@@ -449,12 +495,14 @@ class _AppRootState extends State<AppRoot> {
       AppScreen.lobby => LobbyScreen(
           controller: _controller!,
           session: _session,
+          chat: _chat,
           onLeave: _leaveToHome,
           onStart: _startGame,
         ),
       AppScreen.game => GameScreen(
           controller: _controller!,
           session: _session,
+          chat: _chat,
           onLeave: _leaveToHome,
         ),
     };
