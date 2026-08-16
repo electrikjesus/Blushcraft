@@ -24,7 +24,9 @@ class HowToPlayScreen extends StatelessWidget {
             _section(
               '1. Setup',
               'Host starts a local game on the same Wi‑Fi; your partner taps Join and Connect. '
-              'Or use Online with a QR / paste invite. '
+              'Or use Online: Host shows invite codes one at a time (tap Next after each). '
+              'Join scans each code (green check when it lands), then shows answer codes '
+              'the same way. You can still Copy / Share the full invite as text. '
               'Each of you gets 7 Choice cards. One Statement card is flipped each round.',
             ),
             _section(

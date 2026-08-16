@@ -7,8 +7,11 @@ import '../../util/blush_log.dart';
 class SdpQrCodec {
   static const packageId = 'com.blushcraft.blushcraft';
 
-  /// Target size for a single scannable QR (data-channel invites are usually under this).
-  static const maxSingleQrChars = 900;
+  /// Target payload per on-screen QR.
+  ///
+  /// Keep this well under a dense Version-20 code so phone cameras can lock
+  /// quickly. Clipboard / Share still send the full `BC1:` blob.
+  static const maxSingleQrChars = 420;
 
   static String encodeEnvelope({
     required String role,
@@ -183,4 +186,39 @@ class SdpQrCodec {
     }
     return normalizeIncoming(buf.toString());
   }
+}
+
+/// Collects numbered `BC1C:` (or a single `BC1:`) scans until the set is complete.
+class QrChunkBag {
+  final Map<int, String> parts = {};
+  int? expectedTotal;
+
+  int get haveCount => parts.length;
+  int get totalCount => expectedTotal ?? 0;
+  bool get isComplete =>
+      expectedTotal != null && expectedTotal! > 0 && parts.length >= expectedTotal!;
+
+  /// `true` if this string filled a new slot.
+  bool add(String raw) {
+    final text = raw.trim();
+    if (text.startsWith('BC1C:')) {
+      final m = RegExp(r'^BC1C:(\d+)/(\d+):').firstMatch(text);
+      if (m == null) return false;
+      final index = int.parse(m.group(1)!);
+      final total = int.parse(m.group(2)!);
+      expectedTotal = total;
+      if (parts.containsKey(index)) return false;
+      parts[index] = text;
+      return true;
+    }
+    if (text.contains('BC1:')) {
+      if (parts.isNotEmpty) return false;
+      expectedTotal = 1;
+      parts[1] = text;
+      return true;
+    }
+    return false;
+  }
+
+  String join() => SdpQrCodec.joinChunks(parts.values.toList());
 }

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
-import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
@@ -10,8 +9,11 @@ import '../networking/webrtc/webrtc_qr_session.dart';
 import '../util/blush_log.dart';
 import '../util/camera_availability.dart';
 import 'theme.dart';
+import 'widgets/qr_pairing_chrome.dart';
 
-/// Guest scans/pastes host offer, then shows answer QR for the host.
+enum _JoinPhase { scanInvite, showAnswer, waiting }
+
+/// Guest scans the host invite one code at a time, then shows answer codes.
 class OnlineJoinQrScreen extends StatefulWidget {
   const OnlineJoinQrScreen({
     super.key,
@@ -30,15 +32,15 @@ class OnlineJoinQrScreen extends StatefulWidget {
 
 class _OnlineJoinQrScreenState extends State<OnlineJoinQrScreen> {
   final _offerController = TextEditingController();
-  final _chunks = <String>[];
+  final _inviteBag = QrChunkBag();
   MobileScannerController? _scannerController;
   String? _error;
   bool _busy = false;
-  /// Paste-first: never auto-start CameraX (crashes on 0-camera devices).
-  bool _showScanner = false;
   bool _cameraAvailable = false;
+  bool _flashCheck = false;
   List<String> _answerChunks = const [];
   int _chunkIndex = 0;
+  _JoinPhase _phase = _JoinPhase.scanInvite;
 
   @override
   void initState() {
@@ -54,6 +56,8 @@ class _OnlineJoinQrScreenState extends State<OnlineJoinQrScreen> {
     setState(() => _cameraAvailable = ok);
     if (!ok) {
       blushLog('RTC', 'join: no camera — paste-only invite');
+    } else {
+      await _openScanner();
     }
   }
 
@@ -66,34 +70,23 @@ class _OnlineJoinQrScreenState extends State<OnlineJoinQrScreen> {
     final err = widget.session.lastError;
     setState(() {
       if (err != null) _error = err;
+      if ((widget.session.status ?? '').startsWith('Connecting')) {
+        _phase = _JoinPhase.waiting;
+      }
     });
   }
 
-  Future<void> _setScannerVisible(bool visible) async {
-    if (visible && !_cameraAvailable) {
+  Future<void> _openScanner() async {
+    if (!_cameraAvailable) return;
+    _scannerController ??= MobileScannerController();
+    try {
+      await _scannerController!.start();
+      if (mounted) setState(() {});
+    } catch (e) {
+      blushLog('RTC', 'scanner start failed: $e');
       setState(() {
-        _error = 'No camera on this device — paste the invite text instead.';
-        _showScanner = false;
+        _error = 'Scanner unavailable — paste the invite text instead.';
       });
-      return;
-    }
-    if (visible) {
-      _scannerController ??= MobileScannerController();
-      setState(() => _showScanner = true);
-      try {
-        await _scannerController!.start();
-      } catch (e) {
-        blushLog('RTC', 'scanner start failed: $e');
-        setState(() {
-          _showScanner = false;
-          _error = 'Scanner unavailable — paste the invite text instead.';
-        });
-      }
-    } else {
-      setState(() => _showScanner = false);
-      try {
-        await _scannerController?.stop();
-      } catch (_) {}
     }
   }
 
@@ -106,25 +99,31 @@ class _OnlineJoinQrScreenState extends State<OnlineJoinQrScreen> {
     super.dispose();
   }
 
+  Future<void> _flashThen(VoidCallback next) async {
+    setState(() => _flashCheck = true);
+    await Future<void>.delayed(const Duration(milliseconds: 700));
+    if (!mounted) return;
+    setState(() => _flashCheck = false);
+    next();
+  }
+
   Future<void> _handleScanned(String value) async {
-    if (_busy || widget.session.answerPayload != null) return;
-    final text = value.trim();
-    if (text.startsWith('BC1C:')) {
-      if (_chunks.contains(text)) return;
-      _chunks.add(text);
-      try {
-        final joined = SdpQrCodec.joinChunks(_chunks);
-        await _acceptOffer(joined);
-      } catch (_) {
-        setState(() {
-          _error = 'Scanned ${_chunks.length} part(s)…';
-        });
-      }
+    if (_busy || _phase != _JoinPhase.scanInvite) return;
+    final added = _inviteBag.add(value);
+    if (!added) return;
+    blushLog(
+      'RTC',
+      'guest scanned invite part ${_inviteBag.haveCount}/${_inviteBag.totalCount}',
+    );
+    if (_inviteBag.isComplete) {
+      await _flashThen(() {
+        _acceptOffer(_inviteBag.join());
+      });
       return;
     }
-    if (text.contains('BC1:')) {
-      await _acceptOffer(text);
-    }
+    await _flashThen(() {
+      setState(() => _error = null);
+    });
   }
 
   Future<void> _acceptOffer(String raw) async {
@@ -132,7 +131,6 @@ class _OnlineJoinQrScreenState extends State<OnlineJoinQrScreen> {
     setState(() {
       _busy = true;
       _error = null;
-      _showScanner = false;
     });
     try {
       try {
@@ -140,16 +138,21 @@ class _OnlineJoinQrScreenState extends State<OnlineJoinQrScreen> {
       } catch (_) {}
       blushLog('RTC', 'guest acceptOffer chars=${raw.length}');
       final answer = await widget.session.acceptOfferAndCreateAnswer(raw);
+      final chunks = SdpQrCodec.chunk(answer);
+      blushLog('RTC', 'guest answer ready chunks=${chunks.length}');
       setState(() {
-        _answerChunks = SdpQrCodec.chunk(answer);
+        _answerChunks = chunks;
         _chunkIndex = 0;
+        _phase = _JoinPhase.showAnswer;
       });
-      blushLog('RTC', 'guest answer ready chunks=${_answerChunks.length}');
     } catch (e) {
       setState(() {
         _error = '$e';
-        _chunks.clear();
+        _inviteBag.parts.clear();
+        _inviteBag.expectedTotal = null;
+        _phase = _JoinPhase.scanInvite;
       });
+      await _openScanner();
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -157,11 +160,6 @@ class _OnlineJoinQrScreenState extends State<OnlineJoinQrScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final answer = widget.session.answerPayload;
-    final payload = _answerChunks.isEmpty
-        ? null
-        : _answerChunks[_chunkIndex.clamp(0, _answerChunks.length - 1)];
-
     return BlushBackdrop(
       child: Scaffold(
         backgroundColor: Colors.transparent,
@@ -175,212 +173,259 @@ class _OnlineJoinQrScreenState extends State<OnlineJoinQrScreen> {
         body: ListView(
           padding: const EdgeInsets.all(24),
           children: [
-            Text(
-              answer == null ? 'Paste host invite' : 'Show answer to host',
-              style: BlushTheme.display(28),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              answer == null
-                  ? 'Prefer Local on the same Wi‑Fi (no codes). '
-                      'For Online: paste the full invite text'
-                      '${_cameraAvailable ? ', or scan their QR' : ''}. '
-                      'Keep this screen awake, then show your answer.'
-                  : 'Have the host scan this QR, or Copy / Share the full answer text. '
-                      'Keep both devices awake until Connected.',
-              style: BlushTheme.body(14, color: BlushTheme.inkMuted),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              widget.session.status ?? '',
-              style: BlushTheme.body(13, color: BlushTheme.roseDeep),
-            ),
-            const SizedBox(height: 16),
-            if (answer == null) ...[
-              TextField(
-                controller: _offerController,
-                minLines: 2,
-                maxLines: 6,
-                decoration: const InputDecoration(
-                  hintText: 'Paste full BC1:… invite (or all BC1C: lines)',
-                ),
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: _busy
-                          ? null
-                          : () async {
-                              final data =
-                                  await Clipboard.getData(Clipboard.kTextPlain);
-                              final text = data?.text?.trim() ?? '';
-                              if (text.isEmpty) {
-                                setState(() => _error = 'Clipboard is empty');
-                                return;
-                              }
-                              _offerController.text = text;
-                              try {
-                                final preview = SdpQrCodec.describeEnvelope(
-                                  SdpQrCodec.decodeEnvelope(text),
-                                );
-                                setState(() => _error = 'Ready: $preview');
-                              } catch (e) {
-                                setState(() => _error = '$e');
-                              }
-                            },
-                      child: const Text('Paste'),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: _busy
-                          ? null
-                          : () => _acceptOffer(_offerController.text.trim()),
-                      child: const Text('Use invite'),
-                    ),
-                  ),
-                ],
-              ),
-              if (_cameraAvailable) ...[
-                const SizedBox(height: 12),
-                OutlinedButton.icon(
-                  onPressed: _busy
-                      ? null
-                      : () => _setScannerVisible(!_showScanner),
-                  icon: Icon(
-                    _showScanner ? Icons.close : Icons.qr_code_scanner,
-                  ),
-                  label: Text(_showScanner ? 'Hide scanner' : 'Scan invite QR'),
-                ),
-                if (_showScanner && _scannerController != null) ...[
-                  const SizedBox(height: 12),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(16),
-                    child: SizedBox(
-                      height: 240,
-                      child: MobileScanner(
-                        controller: _scannerController!,
-                        onDetect: (capture) {
-                          final barcodes = capture.barcodes;
-                          if (barcodes.isEmpty) return;
-                          final v = barcodes.first.rawValue;
-                          if (v != null) {
-                            _handleScanned(v);
-                          }
-                        },
-                      ),
-                    ),
-                  ),
-                ],
-              ],
-            ] else ...[
-              if (payload != null)
-                Center(
-                  child: Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: QrImageView(
-                      data: payload,
-                      size: 240,
-                      backgroundColor: Colors.white,
-                      errorCorrectionLevel: QrErrorCorrectLevel.M,
-                    ),
-                  ),
-                ),
-              if (_answerChunks.length > 1) ...[
-                const SizedBox(height: 12),
-                Text(
-                  'Part ${_chunkIndex + 1} of ${_answerChunks.length}',
-                  textAlign: TextAlign.center,
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    TextButton(
-                      onPressed: _chunkIndex > 0
-                          ? () => setState(() => _chunkIndex--)
-                          : null,
-                      child: const Text('Previous'),
-                    ),
-                    TextButton(
-                      onPressed: _chunkIndex < _answerChunks.length - 1
-                          ? () => setState(() => _chunkIndex++)
-                          : null,
-                      child: const Text('Next'),
-                    ),
-                  ],
-                ),
-              ],
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () {
-                        Clipboard.setData(
-                          ClipboardData(
-                            text: SdpQrCodec.clipboardText(answer),
-                          ),
-                        );
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              answer.length > SdpQrCodec.maxSingleQrChars
-                                  ? 'Full answer copied (${answer.length} chars)'
-                                  : 'Full answer copied',
-                            ),
-                          ),
-                        );
-                      },
-                      icon: const Icon(Icons.copy),
-                      label: const Text('Copy full'),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: () {
-                        final text = SdpQrCodec.clipboardText(answer);
-                        SharePlus.instance.share(
-                          ShareParams(
-                            text: 'Blushcraft answer:\n$text',
-                            subject: 'Blushcraft answer',
-                          ),
-                        );
-                      },
-                      icon: const Icon(Icons.ios_share),
-                      label: const Text('Share'),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Waiting for the host to finish connecting…',
-                textAlign: TextAlign.center,
-                style: BlushTheme.body(14, color: BlushTheme.inkMuted),
-              ),
-            ],
+            if (_phase == _JoinPhase.scanInvite)
+              _scanInvite()
+            else if (_phase == _JoinPhase.showAnswer)
+              _showAnswer()
+            else
+              _waiting(),
             if (_busy) ...[
-              const SizedBox(height: 16),
+              const SizedBox(height: 20),
               const Center(child: CircularProgressIndicator()),
             ],
             if (_error != null) ...[
-              const SizedBox(height: 12),
+              const SizedBox(height: 16),
               Text(
                 _error!,
-                style: BlushTheme.body(13, color: BlushTheme.roseDeep),
+                style: BlushTheme.body(14, color: BlushTheme.roseDeep),
               ),
             ],
           ],
         ),
       ),
+    );
+  }
+
+  Widget _scanInvite() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        PairingStepHeader(
+          step: 1,
+          stepCount: 2,
+          title: 'Scan their invite',
+          hint: _cameraAvailable
+              ? 'Point at the invite codes on the host’s screen, one at a time. '
+                  'A green check means that code is locked in.'
+              : 'Paste the full invite text they copied or shared.',
+        ),
+        const SizedBox(height: 16),
+        if (_inviteBag.totalCount > 1)
+          QrPartPips(
+            total: _inviteBag.totalCount,
+            current: (_inviteBag.haveCount + 1).clamp(1, _inviteBag.totalCount),
+            completed: _inviteBag.parts.keys.toSet(),
+            label: 'Invite',
+            assumePreviousDone: false,
+          ),
+        if (_inviteBag.haveCount > 0) ...[
+          const SizedBox(height: 8),
+          Center(
+            child: Text(
+              _inviteBag.isComplete
+                  ? 'Invite complete'
+                  : 'Got ${_inviteBag.haveCount} of ${_inviteBag.totalCount} — scan the next code',
+              style: BlushTheme.body(
+                14,
+                weight: FontWeight.w600,
+                color: const Color(0xFF3D9A6A),
+              ),
+            ),
+          ),
+        ],
+        const SizedBox(height: 16),
+        if (_cameraAvailable && _scannerController != null)
+          PairingScannerPane(
+            controller: _scannerController!,
+            flashCheck: _flashCheck,
+            onDetect: _handleScanned,
+          ),
+        const SizedBox(height: 20),
+        Text(
+          'Or paste the full invite',
+          style: BlushTheme.body(13, color: BlushTheme.inkMuted),
+        ),
+        const SizedBox(height: 8),
+        TextField(
+          controller: _offerController,
+          minLines: 2,
+          maxLines: 5,
+          decoration: const InputDecoration(
+            hintText: 'Paste full BC1:… invite',
+          ),
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton(
+                onPressed: _busy ? null : _pasteInvite,
+                child: const Text('Paste'),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: ElevatedButton(
+                onPressed: _busy
+                    ? null
+                    : () => _acceptOffer(_offerController.text.trim()),
+                child: const Text('Use invite'),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _showAnswer() {
+    if (_answerChunks.isEmpty) {
+      return Text(
+        widget.session.status ?? 'Preparing answer…',
+        style: BlushTheme.body(14, color: BlushTheme.inkMuted),
+      );
+    }
+    final last = _chunkIndex >= _answerChunks.length - 1;
+    final payload = _answerChunks[_chunkIndex];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        PairingStepHeader(
+          step: 2,
+          stepCount: 2,
+          title: 'Show this answer',
+          hint: _answerChunks.length == 1
+              ? 'The host scans this one code. Keep this screen awake until you connect.'
+              : 'The host scans this code, then you tap Next. '
+                  '${_answerChunks.length} answer codes to show.',
+        ),
+        const SizedBox(height: 8),
+        Text(
+          widget.session.status ?? '',
+          style: BlushTheme.body(13, color: BlushTheme.roseDeep),
+        ),
+        const SizedBox(height: 20),
+        QrPartPips(
+          total: _answerChunks.length,
+          current: _chunkIndex + 1,
+        ),
+        const SizedBox(height: 16),
+        Center(
+          child: QrCodeCard(
+            data: payload,
+            confirmed: last && _phase == _JoinPhase.waiting,
+          ),
+        ),
+        const SizedBox(height: 24),
+        if (!last)
+          BigNextButton(
+            label: 'Next code',
+            onPressed: () => setState(() => _chunkIndex++),
+          )
+        else ...[
+          Text(
+            'This is the last answer code. Keep it on screen until the host scans it.',
+            textAlign: TextAlign.center,
+            style: BlushTheme.body(15, weight: FontWeight.w600),
+          ),
+          const SizedBox(height: 12),
+          const Center(
+            child: Icon(Icons.check_circle, color: Color(0xFF3D9A6A), size: 36),
+          ),
+        ],
+        if (_chunkIndex > 0) ...[
+          const SizedBox(height: 8),
+          TextButton(
+            onPressed: () => setState(() => _chunkIndex--),
+            child: const Text('Previous code'),
+          ),
+        ],
+        const SizedBox(height: 16),
+        _shareRow(widget.session.answerPayload, kind: 'answer'),
+      ],
+    );
+  }
+
+  Widget _waiting() {
+    return Column(
+      children: [
+        const SizedBox(height: 24),
+        const Icon(Icons.check_circle, color: Color(0xFF3D9A6A), size: 72),
+        const SizedBox(height: 16),
+        Text('Answer shown', style: BlushTheme.display(26)),
+        const SizedBox(height: 8),
+        Text(
+          'Waiting for the host to finish connecting. Keep this app open.',
+          textAlign: TextAlign.center,
+          style: BlushTheme.body(15, color: BlushTheme.inkMuted),
+        ),
+        const SizedBox(height: 24),
+        if (_busy) const CircularProgressIndicator(),
+        TextButton(
+          onPressed: () {
+            setState(() => _phase = _JoinPhase.showAnswer);
+          },
+          child: const Text('Show answer codes again'),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _pasteInvite() async {
+    final data = await Clipboard.getData(Clipboard.kTextPlain);
+    final text = data?.text?.trim() ?? '';
+    if (text.isEmpty) {
+      setState(() => _error = 'Clipboard is empty');
+      return;
+    }
+    _offerController.text = text;
+    try {
+      final preview = SdpQrCodec.describeEnvelope(
+        SdpQrCodec.decodeEnvelope(text),
+      );
+      setState(() => _error = 'Ready: $preview');
+    } catch (e) {
+      setState(() => _error = '$e');
+    }
+  }
+
+  Widget _shareRow(String? full, {required String kind}) {
+    if (full == null) return const SizedBox.shrink();
+    return Row(
+      children: [
+        Expanded(
+          child: OutlinedButton.icon(
+            onPressed: () {
+              Clipboard.setData(
+                ClipboardData(text: SdpQrCodec.clipboardText(full)),
+              );
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Full $kind copied (${full.length} chars)'),
+                ),
+              );
+            },
+            icon: const Icon(Icons.copy),
+            label: const Text('Copy full'),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: OutlinedButton.icon(
+            onPressed: () {
+              final text = SdpQrCodec.clipboardText(full);
+              SharePlus.instance.share(
+                ShareParams(
+                  text: 'Blushcraft $kind:\n$text',
+                  subject: 'Blushcraft $kind',
+                ),
+              );
+            },
+            icon: const Icon(Icons.ios_share),
+            label: const Text('Share'),
+          ),
+        ),
+      ],
     );
   }
 }
