@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../models/card.dart';
+import '../adaptive.dart';
 import 'card_face.dart';
 
 class HandStrip extends StatelessWidget {
@@ -21,8 +22,9 @@ class HandStrip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final metrics = HandStripMetrics.of(context);
     return SizedBox(
-      height: 150,
+      height: metrics.stripHeight,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -33,7 +35,7 @@ class HandStrip extends StatelessWidget {
           final card = resolve(id);
           if (card == null) return const SizedBox.shrink();
           return SizedBox(
-            width: 160,
+            width: metrics.cardWidth,
             child: Opacity(
               opacity: enabled ? 1 : 0.5,
               child: CardFace(

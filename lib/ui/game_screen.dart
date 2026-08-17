@@ -18,6 +18,7 @@ import '../../state/game_controller.dart';
 import '../../util/blush_log.dart';
 import '../../util/camera_availability.dart';
 import 'av_consent.dart';
+import 'adaptive.dart';
 import 'theme.dart';
 import 'widgets/card_face.dart';
 import 'widgets/chat_panel.dart';
@@ -642,7 +643,7 @@ class _GameScreenState extends State<GameScreen> {
                     child: (_shouldStreamAv(state.phase) &&
                             _av.bothLiveViewEnabled)
                         ? _withReactionPip(state, _bodyFor(state))
-                        : _bodyFor(state),
+                        : _boundedBody(state),
                   ),
                 ],
               ),
@@ -694,6 +695,9 @@ class _GameScreenState extends State<GameScreen> {
 
     return LayoutBuilder(
       builder: (context, constraints) {
+        final win = BlushWindowSize.fromSize(
+          Size(constraints.maxWidth, constraints.maxHeight),
+        );
         final metrics = ReactionAvMetrics.forWidth(constraints.maxWidth);
         final layout = _av.audioOnlyLiveMedia
             ? ReactionAvLayout.strip
@@ -711,40 +715,28 @@ class _GameScreenState extends State<GameScreen> {
           onCycleLayout: _cycleAvLayout,
         );
 
+        final body = _phaseUsesOwnScroll(state.phase)
+            ? child
+            : AdaptiveScrollBody(
+                alignment: Alignment.bottomCenter,
+                child: child,
+              );
+
         if (layout == ReactionAvLayout.strip) {
-          // Content-sized media row — game content keeps the remaining space.
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               panel,
-              Expanded(
-                child: LayoutBuilder(
-                  builder: (context, bodyConstraints) {
-                    return SingleChildScrollView(
-                      child: ConstrainedBox(
-                        constraints: BoxConstraints(
-                          minHeight: bodyConstraints.maxHeight,
-                        ),
-                        child: Align(
-                          alignment: Alignment.bottomCenter,
-                          child: child,
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
+              Expanded(child: body),
             ],
           );
         }
 
-        // Side panel: true split on wide screens, overlay reserve on narrow.
-        final wide = constraints.maxWidth >= 700;
-        if (wide) {
+        if (win.widthMediumOrUp) {
           return Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(child: child),
+              Expanded(child: body),
               panel,
             ],
           );
@@ -757,7 +749,7 @@ class _GameScreenState extends State<GameScreen> {
                 padding: EdgeInsets.only(
                   right: metrics.sideReserveWidth(layout),
                 ),
-                child: child,
+                child: body,
               ),
             ),
             Align(alignment: Alignment.topRight, child: panel),
@@ -765,6 +757,28 @@ class _GameScreenState extends State<GameScreen> {
         );
       },
     );
+  }
+
+  /// Phases whose body is already a scrolling [ListView].
+  bool _phaseUsesOwnScroll(GamePhase phase) {
+    switch (phase) {
+      case GamePhase.reveal:
+      case GamePhase.reaction:
+      case GamePhase.gameOver:
+      case GamePhase.disconnected:
+        return true;
+      case GamePhase.selecting:
+      case GamePhase.waitingForOpponent:
+      case GamePhase.roundResult:
+      case GamePhase.lobby:
+        return false;
+    }
+  }
+
+  Widget _boundedBody(GameState state) {
+    final child = _bodyFor(state);
+    if (_phaseUsesOwnScroll(state.phase)) return child;
+    return AdaptiveScrollBody(child: child);
   }
 
   Widget _bodyFor(GameState state) {
@@ -835,7 +849,9 @@ class _GameScreenState extends State<GameScreen> {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final wide = constraints.maxWidth > 700;
+        final win = BlushWindowSize.fromSize(
+          Size(constraints.maxWidth, constraints.maxHeight),
+        );
         final statement = CardFace(
           text: state.statementText ?? '',
           isStatement: true,
@@ -843,6 +859,7 @@ class _GameScreenState extends State<GameScreen> {
 
         final hand = Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
           children: [
             _tieBreakerBanner(state),
             Padding(
@@ -882,7 +899,8 @@ class _GameScreenState extends State<GameScreen> {
           ],
         );
 
-        if (wide) {
+        // Medium+ width or compact height (landscape phone): statement | hand.
+        if (win.preferSplit && constraints.maxWidth >= 480) {
           return Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -1113,41 +1131,71 @@ class _GameScreenState extends State<GameScreen> {
 
   Widget _roundResult(GameState state) {
     final combo = state.lastCombo;
+    final header = Text(
+      state.message ?? 'Point awarded',
+      style: BlushTheme.display(28),
+      textAlign: TextAlign.center,
+    );
+    final actions = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (combo != null)
+          ShareButton(
+            onPressed: () => _share.shareCombo(combo),
+            label: 'Share combo',
+          ),
+        const SizedBox(height: 24),
+        if (widget.controller.isHost || widget.controller.dryRun)
+          ElevatedButton(
+            onPressed: () => widget.controller.nextRound(),
+            child: const Text('Next round'),
+          )
+        else
+          Text(
+            'Waiting for host…',
+            textAlign: TextAlign.center,
+            style: BlushTheme.body(14, color: BlushTheme.inkMuted),
+          ),
+      ],
+    );
+
+    if (combo == null) {
+      return Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [header, const SizedBox(height: 20), actions],
+        ),
+      );
+    }
+
+    final hostCard = CardFace(text: combo.hostFilled, isStatement: true);
+    final guestCard = CardFace(text: combo.guestFilled, compact: true);
+
     return Padding(
       padding: const EdgeInsets.all(24),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(
-            state.message ?? 'Point awarded',
-            style: BlushTheme.display(28),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 20),
-          if (combo != null) ...[
-            CardFace(text: combo.hostFilled, isStatement: true),
-            const SizedBox(height: 10),
-            CardFace(text: combo.guestFilled, compact: true),
-            const SizedBox(height: 16),
-            ShareButton(
-              onPressed: () => _share.shareCombo(combo),
-              label: 'Share combo',
-            ),
+      child: AdaptiveSplit(
+        start: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            header,
+            const SizedBox(height: 20),
+            hostCard,
           ],
-          const SizedBox(height: 24),
-          if (widget.controller.isHost || widget.controller.dryRun)
-            ElevatedButton(
-              onPressed: () => widget.controller.nextRound(),
-              child: const Text('Next round'),
-            )
-          else
-            Text(
-              'Waiting for host…',
-              textAlign: TextAlign.center,
-              style: BlushTheme.body(14, color: BlushTheme.inkMuted),
-            ),
-        ],
+        ),
+        end: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            guestCard,
+            const SizedBox(height: 16),
+            actions,
+          ],
+        ),
+        scrollWhenStacked: true,
       ),
     );
   }

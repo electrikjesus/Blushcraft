@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import '../../state/chat_controller.dart';
 import '../../util/chat_photo_picker.dart';
 import '../../util/chat_voice_recorder.dart';
+import '../adaptive.dart';
 import '../theme.dart';
 
 /// Bottom sheet peer chat: consent actions, text, and photos.
@@ -28,10 +29,12 @@ class ChatPanel {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (ctx) {
+        final win = BlushWindowSize.of(ctx);
+        final fraction = win.heightCompact ? 0.92 : 0.72;
         return Padding(
           padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(ctx).bottom),
           child: SizedBox(
-            height: MediaQuery.sizeOf(ctx).height * 0.72,
+            height: MediaQuery.sizeOf(ctx).height * fraction,
             child: _ChatPanelBody(
               chat: chat,
               partnerName: partnerName,

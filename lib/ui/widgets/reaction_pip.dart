@@ -4,6 +4,7 @@ import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 
 import '../../camera/reaction_camera.dart';
+import '../adaptive.dart';
 import '../theme.dart';
 
 /// How reaction cameras sit relative to game content.
@@ -15,7 +16,7 @@ enum ReactionAvLayout {
   strip,
 }
 
-/// User preference; [auto] picks strip under 600px width, side otherwise.
+/// User preference; [auto] picks strip on compact width, side on medium+.
 enum ReactionAvLayoutPref {
   auto,
   strip,
@@ -37,7 +38,9 @@ enum ReactionAvLayoutPref {
       case ReactionAvLayoutPref.side:
         return ReactionAvLayout.side;
       case ReactionAvLayoutPref.auto:
-        return width < 600 ? ReactionAvLayout.strip : ReactionAvLayout.side;
+        return BlushWindowSize.widthClassFor(width) == BlushWidthClass.compact
+            ? ReactionAvLayout.strip
+            : ReactionAvLayout.side;
     }
   }
 
@@ -89,7 +92,8 @@ class ReactionAvMetrics {
 
   /// Scale tiles to the play area width — never grow to fill leftover height.
   factory ReactionAvMetrics.forWidth(double width) {
-    final compact = width < 420;
+    final widthClass = BlushWindowSize.widthClassFor(width);
+    final compact = widthClass == BlushWidthClass.compact && width < 420;
     final stripHeight = (width * 0.14).clamp(56.0, 88.0);
     final audioHeight = compact ? 56.0 : 60.0;
     final selfSize = (stripHeight * 0.55).clamp(32.0, 44.0);

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
+import '../adaptive.dart';
 import '../theme.dart';
 
 /// One-step pairing chrome: progress, QR card, scan view, big Next.
@@ -95,7 +96,7 @@ class QrPartPips extends StatelessWidget {
             ? BlushTheme.roseDeep
             : BlushTheme.creamDark;
     return AnimatedContainer(
-      duration: const Duration(milliseconds: 180),
+      duration: const Duration(milliseconds: 220),
       width: done || active ? 36 : 28,
       height: done || active ? 36 : 28,
       decoration: BoxDecoration(color: bg, shape: BoxShape.circle),
@@ -115,18 +116,72 @@ class QrPartPips extends StatelessWidget {
   }
 }
 
+/// Side-by-side chrome | media on short/wide viewports; stacked otherwise.
+class PairingAdaptiveBody extends StatelessWidget {
+  const PairingAdaptiveBody({
+    super.key,
+    required this.chrome,
+    required this.media,
+    this.below,
+  });
+
+  final Widget chrome;
+  final Widget media;
+  final Widget? below;
+
+  @override
+  Widget build(BuildContext context) {
+    final win = BlushWindowSize.of(context);
+    final mediaColumn = Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        media,
+        if (below != null) ...[
+          const SizedBox(height: 16),
+          below!,
+        ],
+      ],
+    );
+
+    if (win.preferSplit) {
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(flex: 5, child: chrome),
+          const SizedBox(width: 20),
+          Expanded(flex: 4, child: mediaColumn),
+        ],
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        chrome,
+        const SizedBox(height: 16),
+        mediaColumn,
+      ],
+    );
+  }
+}
+
 class QrCodeCard extends StatelessWidget {
   const QrCodeCard({
     super.key,
     required this.data,
     this.confirmed = false,
+    this.size,
   });
 
   final String data;
   final bool confirmed;
+  final double? size;
 
   @override
   Widget build(BuildContext context) {
+    final qrSize = size ?? PairingMediaMetrics.of(context).qrSize;
     return Stack(
       alignment: Alignment.center,
       children: [
@@ -144,13 +199,12 @@ class QrCodeCard extends StatelessWidget {
           ),
           child: QrImageView(
             data: data,
-            size: 260,
+            size: qrSize,
             backgroundColor: Colors.white,
             errorCorrectionLevel: QrErrorCorrectLevel.M,
           ),
         ),
-        if (confirmed)
-          const _GreenCheckBurst(),
+        if (confirmed) const _GreenCheckBurst(),
       ],
     );
   }
@@ -211,18 +265,22 @@ class PairingScannerPane extends StatelessWidget {
     required this.controller,
     required this.onDetect,
     this.flashCheck = false,
+    this.height,
   });
 
   final MobileScannerController controller;
   final void Function(String value) onDetect;
   final bool flashCheck;
+  final double? height;
 
   @override
   Widget build(BuildContext context) {
+    final h = height ?? PairingMediaMetrics.of(context).scannerHeight;
+    final frame = (h * 0.7).clamp(120.0, 200.0);
     return ClipRRect(
       borderRadius: BorderRadius.circular(18),
       child: SizedBox(
-        height: 280,
+        height: h,
         child: Stack(
           fit: StackFit.expand,
           children: [
@@ -238,8 +296,8 @@ class PairingScannerPane extends StatelessWidget {
             IgnorePointer(
               child: Center(
                 child: Container(
-                  width: 200,
-                  height: 200,
+                  width: frame,
+                  height: frame,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
@@ -252,8 +310,7 @@ class PairingScannerPane extends StatelessWidget {
                 ),
               ),
             ),
-            if (flashCheck)
-              const Center(child: _GreenCheckBurst()),
+            if (flashCheck) const Center(child: _GreenCheckBurst()),
           ],
         ),
       ),

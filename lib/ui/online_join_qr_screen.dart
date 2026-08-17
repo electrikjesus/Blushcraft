@@ -8,6 +8,7 @@ import '../networking/webrtc/sdp_qr_codec.dart';
 import '../networking/webrtc/webrtc_qr_session.dart';
 import '../util/blush_log.dart';
 import '../util/camera_availability.dart';
+import 'adaptive.dart';
 import 'theme.dart';
 import 'widgets/qr_pairing_chrome.dart';
 
@@ -170,35 +171,41 @@ class _OnlineJoinQrScreenState extends State<OnlineJoinQrScreen> {
             onPressed: widget.onCancel,
           ),
         ),
-        body: ListView(
-          padding: const EdgeInsets.all(24),
-          children: [
-            if (_phase == _JoinPhase.scanInvite)
-              _scanInvite()
-            else if (_phase == _JoinPhase.showAnswer)
-              _showAnswer()
-            else
-              _waiting(),
-            if (_busy) ...[
-              const SizedBox(height: 20),
-              const Center(child: CircularProgressIndicator()),
-            ],
-            if (_error != null) ...[
-              const SizedBox(height: 16),
-              Text(
-                _error!,
-                style: BlushTheme.body(14, color: BlushTheme.roseDeep),
-              ),
-            ],
-          ],
+        body: Builder(
+          builder: (context) {
+            final pad = BlushWindowSize.of(context).pagePadding;
+            return ListView(
+              padding: EdgeInsets.all(pad),
+              children: [
+                if (_phase == _JoinPhase.scanInvite)
+                  _scanInvite()
+                else if (_phase == _JoinPhase.showAnswer)
+                  _showAnswer()
+                else
+                  _waiting(),
+                if (_busy) ...[
+                  const SizedBox(height: 20),
+                  const Center(child: CircularProgressIndicator()),
+                ],
+                if (_error != null) ...[
+                  const SizedBox(height: 16),
+                  Text(
+                    _error!,
+                    style: BlushTheme.body(14, color: BlushTheme.roseDeep),
+                  ),
+                ],
+              ],
+            );
+          },
         ),
       ),
     );
   }
 
   Widget _scanInvite() {
-    return Column(
+    final chrome = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
       children: [
         PairingStepHeader(
           step: 1,
@@ -233,14 +240,7 @@ class _OnlineJoinQrScreenState extends State<OnlineJoinQrScreen> {
             ),
           ),
         ],
-        const SizedBox(height: 16),
-        if (_cameraAvailable && _scannerController != null)
-          PairingScannerPane(
-            controller: _scannerController!,
-            flashCheck: _flashCheck,
-            onDetect: _handleScanned,
-          ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 12),
         Text(
           'Or paste the full invite',
           style: BlushTheme.body(13, color: BlushTheme.inkMuted),
@@ -249,7 +249,7 @@ class _OnlineJoinQrScreenState extends State<OnlineJoinQrScreen> {
         TextField(
           controller: _offerController,
           minLines: 2,
-          maxLines: 5,
+          maxLines: 4,
           decoration: const InputDecoration(
             hintText: 'Paste full BC1:… invite',
           ),
@@ -276,6 +276,14 @@ class _OnlineJoinQrScreenState extends State<OnlineJoinQrScreen> {
         ),
       ],
     );
+    final media = _cameraAvailable && _scannerController != null
+        ? PairingScannerPane(
+            controller: _scannerController!,
+            flashCheck: _flashCheck,
+            onDetect: _handleScanned,
+          )
+        : const SizedBox.shrink();
+    return PairingAdaptiveBody(chrome: chrome, media: media);
   }
 
   Widget _showAnswer() {
@@ -287,8 +295,9 @@ class _OnlineJoinQrScreenState extends State<OnlineJoinQrScreen> {
     }
     final last = _chunkIndex >= _answerChunks.length - 1;
     final payload = _answerChunks[_chunkIndex];
-    return Column(
+    final chrome = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
       children: [
         PairingStepHeader(
           step: 2,
@@ -304,19 +313,12 @@ class _OnlineJoinQrScreenState extends State<OnlineJoinQrScreen> {
           widget.session.status ?? '',
           style: BlushTheme.body(13, color: BlushTheme.roseDeep),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 16),
         QrPartPips(
           total: _answerChunks.length,
           current: _chunkIndex + 1,
         ),
         const SizedBox(height: 16),
-        Center(
-          child: QrCodeCard(
-            data: payload,
-            confirmed: last && _phase == _JoinPhase.waiting,
-          ),
-        ),
-        const SizedBox(height: 24),
         if (!last)
           BigNextButton(
             label: 'Next code',
@@ -340,9 +342,17 @@ class _OnlineJoinQrScreenState extends State<OnlineJoinQrScreen> {
             child: const Text('Previous code'),
           ),
         ],
-        const SizedBox(height: 16),
-        _shareRow(widget.session.answerPayload, kind: 'answer'),
       ],
+    );
+    return PairingAdaptiveBody(
+      chrome: chrome,
+      media: Center(
+        child: QrCodeCard(
+          data: payload,
+          confirmed: last && _phase == _JoinPhase.waiting,
+        ),
+      ),
+      below: _shareRow(widget.session.answerPayload, kind: 'answer'),
     );
   }
 

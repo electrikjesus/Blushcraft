@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../networking/game_transport.dart';
 import '../../state/chat_controller.dart';
 import '../../state/game_controller.dart';
+import 'adaptive.dart';
 import 'theme.dart';
 import 'widgets/chat_panel.dart';
 import 'widgets/game_mode_picker.dart';
@@ -78,9 +79,12 @@ class LobbyScreen extends StatelessWidget {
                       (s != null && s.guest.id != 'pending-guest') ||
                       (session != null && session!.isConnected);
                   final name = s?.remotePlayer.name ?? partnerName;
+                  final win = BlushWindowSize.of(context);
+                  final pad = win.pagePadding;
 
-                  return ListView(
-                    padding: const EdgeInsets.all(24),
+                  final left = Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       Text('Blushcraft', style: BlushTheme.display(32)),
                       const SizedBox(height: 8),
@@ -139,12 +143,6 @@ class LobbyScreen extends StatelessWidget {
                             ),
                           ),
                         ),
-                      const SizedBox(height: 28),
-                      LobbyAvSetup(
-                        localPlayerId: controller.localPlayerId,
-                        controller: controller,
-                        session: session,
-                      ),
                       if (local != null &&
                           !controller.isHost &&
                           !local.isConnected &&
@@ -163,6 +161,18 @@ class LobbyScreen extends StatelessWidget {
                           ),
                         ),
                       ],
+                    ],
+                  );
+
+                  final right = Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      LobbyAvSetup(
+                        localPlayerId: controller.localPlayerId,
+                        controller: controller,
+                        session: session,
+                      ),
                       if (chatCtrl != null &&
                           partnerReady &&
                           !controller.dryRun) ...[
@@ -220,8 +230,8 @@ class LobbyScreen extends StatelessWidget {
                             onStart();
                           },
                           child: const Text('Start game'),
-                        ),
-                      if (!controller.isHost)
+                        )
+                      else
                         Text(
                           'Waiting for the host to start…',
                           textAlign: TextAlign.center,
@@ -231,6 +241,26 @@ class LobbyScreen extends StatelessWidget {
                           ),
                         ),
                     ],
+                  );
+
+                  return BlushContentWidth(
+                    child: ListView(
+                      padding: EdgeInsets.all(pad),
+                      children: [
+                        if (win.preferSplit)
+                          AdaptiveSplit(
+                            start: left,
+                            end: right,
+                            scrollWhenStacked: false,
+                            preferSplitOverride: true,
+                          )
+                        else ...[
+                          left,
+                          const SizedBox(height: 28),
+                          right,
+                        ],
+                      ],
+                    ),
                   );
                 },
               ),

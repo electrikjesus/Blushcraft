@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../models/game_mode.dart';
+import 'adaptive.dart';
 import 'theme.dart';
 import 'widgets/game_mode_picker.dart';
 import 'widgets/riskay_slider.dart';
@@ -93,170 +94,89 @@ class _HomeScreenState extends State<HomeScreen>
         body: SafeArea(
           child: LayoutBuilder(
             builder: (context, constraints) {
-              final wide = constraints.maxWidth > 700;
-              return SingleChildScrollView(
+              final win = BlushWindowSize.fromSize(
+                Size(constraints.maxWidth, constraints.maxHeight),
+              );
+              final brand = _brand(win);
+              final form = _form();
+
+              Widget body;
+              if (win.preferSplit && constraints.maxWidth >= 560) {
+                body = Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Expanded(flex: 4, child: brand),
+                    SizedBox(width: win.pagePadding),
+                    Expanded(
+                      flex: 5,
+                      child: SingleChildScrollView(child: form),
+                    ),
+                  ],
+                );
+              } else {
+                body = AdaptiveScrollBody(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      brand,
+                      const SizedBox(height: 32),
+                      form,
+                      const SizedBox(height: 16),
+                      Text(
+                        'First to 5 points wins the prize.',
+                        textAlign: TextAlign.center,
+                        style: BlushTheme.body(
+                          13,
+                          color: BlushTheme.inkMuted,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                    ],
+                  ),
+                );
+              }
+
+              return Padding(
                 padding: EdgeInsets.symmetric(
-                  horizontal: wide ? 64 : 24,
+                  horizontal: win.pagePadding,
                   vertical: 20,
                 ),
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(
-                    minHeight: constraints.maxHeight - 40,
-                  ),
-                  child: IntrinsicHeight(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              TextButton(
-                                onPressed: widget.onHowTo,
-                                child: const Text('How to play'),
-                              ),
-                              IconButton(
-                                tooltip: 'Stats',
-                                onPressed: widget.onStats,
-                                icon: const Icon(Icons.favorite_border),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 24),
-                        FadeTransition(
-                          opacity:
-                              Tween(begin: 0.85, end: 1.0).animate(_pulse),
-                          child: Column(
-                            children: [
-                              Text(
-                                'Blushcraft',
-                                textAlign: TextAlign.center,
-                                style: BlushTheme.display(
-                                  wide ? 64 : 48,
-                                  weight: FontWeight.w700,
-                                  color: BlushTheme.roseDeep,
-                                ),
-                              ),
-                              const SizedBox(height: 12),
-                              Text(
-                                'A two-player card game for romantic &\nplayful moments.',
-                                textAlign: TextAlign.center,
-                                style: BlushTheme.body(
-                                  17,
-                                  color: BlushTheme.inkMuted,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 32),
-                        TextField(
-                          controller: _name,
-                          decoration: const InputDecoration(
-                            labelText: 'Your name',
-                            hintText: 'What should we call you?',
-                          ),
-                          textInputAction: TextInputAction.done,
-                        ),
-                        const SizedBox(height: 20),
-                        GameModePicker(
-                          value: widget.gameMode,
-                          onChanged: widget.onGameModeChanged,
-                        ),
-                        const SizedBox(height: 20),
-                        RiskaySlider(
-                          value: widget.riskayLevel,
-                          onChanged: widget.onRiskayChanged,
-                        ),
-                        const SizedBox(height: 24),
-                        Text(
-                          'Play over',
-                          style: BlushTheme.body(13, color: BlushTheme.inkMuted),
-                        ),
-                        const SizedBox(height: 8),
-                        SegmentedButton<_PlayTransport>(
-                          segments: const [
-                            ButtonSegment(
-                              value: _PlayTransport.local,
-                              label: Text('Local'),
-                              icon: Icon(Icons.wifi, size: 18),
+                child: BlushContentWidth(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            TextButton(
+                              onPressed: widget.onHowTo,
+                              child: const Text('How to play'),
                             ),
-                            ButtonSegment(
-                              value: _PlayTransport.online,
-                              label: Text('Online'),
-                              icon: Icon(Icons.qr_code_2, size: 18),
+                            IconButton(
+                              tooltip: 'Stats',
+                              onPressed: widget.onStats,
+                              icon: const Icon(Icons.favorite_border),
                             ),
                           ],
-                          selected: {_transport},
-                          onSelectionChanged: (next) {
-                            if (next.isEmpty) return;
-                            setState(() => _transport = next.first);
-                          },
-                          style: ButtonStyle(
-                            foregroundColor:
-                                WidgetStateProperty.resolveWith((states) {
-                              if (states.contains(WidgetState.selected)) {
-                                return Colors.white;
-                              }
-                              return BlushTheme.roseDeep;
-                            }),
-                            backgroundColor:
-                                WidgetStateProperty.resolveWith((states) {
-                              if (states.contains(WidgetState.selected)) {
-                                return BlushTheme.rose;
-                              }
-                              return BlushTheme.cardFace;
-                            }),
-                          ),
                         ),
-                        const SizedBox(height: 8),
-                        Text(
-                          _online
-                              ? 'QR / paste invite over WebRTC (best on Wi‑Fi).'
-                              : 'Same Wi‑Fi — no Google Play Services needed.',
-                          style: BlushTheme.body(13, color: BlushTheme.inkMuted),
-                        ),
-                        const SizedBox(height: 16),
-                        ElevatedButton(
-                          onPressed: _onHost,
-                          style: _online
-                              ? ElevatedButton.styleFrom(
-                                  backgroundColor: BlushTheme.roseDeep,
-                                )
-                              : null,
-                          child: Text(_online ? 'Host online' : 'Host local'),
-                        ),
-                        const SizedBox(height: 12),
-                        OutlinedButton(
-                          onPressed: _onJoin,
-                          child: Text(_online ? 'Join online' : 'Join local'),
-                        ),
-                        const SizedBox(height: 12),
-                        TextButton(
-                          onPressed: () => widget.onDryRun(_trimmed),
+                      ),
+                      const SizedBox(height: 12),
+                      Expanded(child: body),
+                      if (win.preferSplit && constraints.maxWidth >= 560)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 12),
                           child: Text(
-                            'Practice on this device',
+                            'First to 5 points wins the prize.',
+                            textAlign: TextAlign.center,
                             style: BlushTheme.body(
-                              14,
+                              13,
                               color: BlushTheme.inkMuted,
                             ),
                           ),
                         ),
-                        const Spacer(),
-                        const SizedBox(height: 16),
-                        Text(
-                          'First to 5 points wins the prize.',
-                          textAlign: TextAlign.center,
-                          style: BlushTheme.body(
-                            13,
-                            color: BlushTheme.inkMuted,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                      ],
-                    ),
+                    ],
                   ),
                 ),
               );
@@ -264,6 +184,140 @@ class _HomeScreenState extends State<HomeScreen>
           ),
         ),
       ),
+    );
+  }
+
+  Widget _brand(BlushWindowSize win) {
+    return FadeTransition(
+      opacity: Tween(begin: 0.85, end: 1.0).animate(_pulse),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            'Blushcraft',
+            textAlign: TextAlign.center,
+            style: BlushTheme.display(
+              win.widthExpanded
+                  ? 64
+                  : win.heightCompact
+                      ? 40
+                      : 48,
+              weight: FontWeight.w700,
+              color: BlushTheme.roseDeep,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            win.preferSplit
+                ? 'A two-player card game for romantic & playful moments.'
+                : 'A two-player card game for romantic &\nplayful moments.',
+            textAlign: TextAlign.center,
+            style: BlushTheme.body(
+              17,
+              color: BlushTheme.inkMuted,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _form() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        TextField(
+          controller: _name,
+          decoration: const InputDecoration(
+            labelText: 'Your name',
+            hintText: 'What should we call you?',
+          ),
+          textInputAction: TextInputAction.done,
+        ),
+        const SizedBox(height: 20),
+        GameModePicker(
+          value: widget.gameMode,
+          onChanged: widget.onGameModeChanged,
+        ),
+        const SizedBox(height: 20),
+        RiskaySlider(
+          value: widget.riskayLevel,
+          onChanged: widget.onRiskayChanged,
+        ),
+        const SizedBox(height: 24),
+        Text(
+          'Play over',
+          style: BlushTheme.body(13, color: BlushTheme.inkMuted),
+        ),
+        const SizedBox(height: 8),
+        SegmentedButton<_PlayTransport>(
+          segments: const [
+            ButtonSegment(
+              value: _PlayTransport.local,
+              label: Text('Local'),
+              icon: Icon(Icons.wifi, size: 18),
+            ),
+            ButtonSegment(
+              value: _PlayTransport.online,
+              label: Text('Online'),
+              icon: Icon(Icons.qr_code_2, size: 18),
+            ),
+          ],
+          selected: {_transport},
+          onSelectionChanged: (next) {
+            if (next.isEmpty) return;
+            setState(() => _transport = next.first);
+          },
+          style: ButtonStyle(
+            foregroundColor: WidgetStateProperty.resolveWith((states) {
+              if (states.contains(WidgetState.selected)) {
+                return Colors.white;
+              }
+              return BlushTheme.roseDeep;
+            }),
+            backgroundColor: WidgetStateProperty.resolveWith((states) {
+              if (states.contains(WidgetState.selected)) {
+                return BlushTheme.rose;
+              }
+              return BlushTheme.cardFace;
+            }),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          _online
+              ? 'QR / paste invite over WebRTC (best on Wi‑Fi).'
+              : 'Same Wi‑Fi — no Google Play Services needed.',
+          style: BlushTheme.body(13, color: BlushTheme.inkMuted),
+        ),
+        const SizedBox(height: 16),
+        ElevatedButton(
+          onPressed: _onHost,
+          style: _online
+              ? ElevatedButton.styleFrom(
+                  backgroundColor: BlushTheme.roseDeep,
+                )
+              : null,
+          child: Text(_online ? 'Host online' : 'Host local'),
+        ),
+        const SizedBox(height: 12),
+        OutlinedButton(
+          onPressed: _onJoin,
+          child: Text(_online ? 'Join online' : 'Join local'),
+        ),
+        const SizedBox(height: 12),
+        TextButton(
+          onPressed: () => widget.onDryRun(_trimmed),
+          child: Text(
+            'Practice on this device',
+            style: BlushTheme.body(
+              14,
+              color: BlushTheme.inkMuted,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

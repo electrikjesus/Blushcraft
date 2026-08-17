@@ -8,6 +8,7 @@ import '../networking/webrtc/sdp_qr_codec.dart';
 import '../networking/webrtc/webrtc_qr_session.dart';
 import '../util/blush_log.dart';
 import '../util/camera_availability.dart';
+import 'adaptive.dart';
 import 'theme.dart';
 import 'widgets/qr_pairing_chrome.dart';
 
@@ -199,28 +200,33 @@ class _OnlineHostQrScreenState extends State<OnlineHostQrScreen> {
             onPressed: widget.onCancel,
           ),
         ),
-        body: ListView(
-          padding: const EdgeInsets.all(24),
-          children: [
-            if (_busy && _offerChunks.isEmpty)
-              const Padding(
-                padding: EdgeInsets.only(top: 48),
-                child: Center(child: CircularProgressIndicator()),
-              )
-            else if (_phase == _HostPhase.showInvite)
-              _showInvite()
-            else if (_phase == _HostPhase.scanAnswer)
-              _scanAnswer()
-            else
-              _connecting(),
-            if (_error != null) ...[
-              const SizedBox(height: 16),
-              Text(
-                _error!,
-                style: BlushTheme.body(14, color: BlushTheme.roseDeep),
-              ),
-            ],
-          ],
+        body: Builder(
+          builder: (context) {
+            final pad = BlushWindowSize.of(context).pagePadding;
+            return ListView(
+              padding: EdgeInsets.all(pad),
+              children: [
+                if (_busy && _offerChunks.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.only(top: 48),
+                    child: Center(child: CircularProgressIndicator()),
+                  )
+                else if (_phase == _HostPhase.showInvite)
+                  _showInvite()
+                else if (_phase == _HostPhase.scanAnswer)
+                  _scanAnswer()
+                else
+                  _connecting(),
+                if (_error != null) ...[
+                  const SizedBox(height: 16),
+                  Text(
+                    _error!,
+                    style: BlushTheme.body(14, color: BlushTheme.roseDeep),
+                  ),
+                ],
+              ],
+            );
+          },
         ),
       ),
     );
@@ -235,8 +241,9 @@ class _OnlineHostQrScreenState extends State<OnlineHostQrScreen> {
     }
     final last = _chunkIndex >= _offerChunks.length - 1;
     final payload = _offerChunks[_chunkIndex];
-    return Column(
+    final chrome = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
       children: [
         PairingStepHeader(
           step: 1,
@@ -253,14 +260,12 @@ class _OnlineHostQrScreenState extends State<OnlineHostQrScreen> {
           widget.session.status ?? '',
           style: BlushTheme.body(13, color: BlushTheme.roseDeep),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 16),
         QrPartPips(
           total: _offerChunks.length,
           current: _chunkIndex + 1,
         ),
         const SizedBox(height: 16),
-        Center(child: QrCodeCard(data: payload)),
-        const SizedBox(height: 24),
         BigNextButton(
           label: last
               ? (_offerChunks.length > 1
@@ -278,15 +283,19 @@ class _OnlineHostQrScreenState extends State<OnlineHostQrScreen> {
             child: const Text('Previous code'),
           ),
         ],
-        const SizedBox(height: 16),
-        _shareRow(widget.session.offerPayload, kind: 'invite'),
       ],
+    );
+    return PairingAdaptiveBody(
+      chrome: chrome,
+      media: Center(child: QrCodeCard(data: payload)),
+      below: _shareRow(widget.session.offerPayload, kind: 'invite'),
     );
   }
 
   Widget _scanAnswer() {
-    return Column(
+    final chrome = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
       children: [
         PairingStepHeader(
           step: 2,
@@ -310,20 +319,7 @@ class _OnlineHostQrScreenState extends State<OnlineHostQrScreen> {
           const SizedBox(height: 8),
           const Center(child: _InlineCheck(label: 'Answer captured')),
         ],
-        const SizedBox(height: 16),
-        if (_cameraAvailable && _scannerController != null)
-          PairingScannerPane(
-            controller: _scannerController!,
-            flashCheck: _flashCheck,
-            onDetect: _handleScannedAnswer,
-          )
-        else if (_cameraAvailable)
-          OutlinedButton.icon(
-            onPressed: _openScanner,
-            icon: const Icon(Icons.qr_code_scanner),
-            label: const Text('Open camera'),
-          ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 12),
         Text(
           'Or paste the full answer',
           style: BlushTheme.body(13, color: BlushTheme.inkMuted),
@@ -332,7 +328,7 @@ class _OnlineHostQrScreenState extends State<OnlineHostQrScreen> {
         TextField(
           controller: _answerController,
           minLines: 2,
-          maxLines: 5,
+          maxLines: 4,
           decoration: const InputDecoration(
             hintText: 'Paste full BC1:… answer',
           ),
@@ -357,6 +353,20 @@ class _OnlineHostQrScreenState extends State<OnlineHostQrScreen> {
         ),
       ],
     );
+    final media = _cameraAvailable && _scannerController != null
+        ? PairingScannerPane(
+            controller: _scannerController!,
+            flashCheck: _flashCheck,
+            onDetect: _handleScannedAnswer,
+          )
+        : (_cameraAvailable
+            ? OutlinedButton.icon(
+                onPressed: _openScanner,
+                icon: const Icon(Icons.qr_code_scanner),
+                label: const Text('Open camera'),
+              )
+            : const SizedBox.shrink());
+    return PairingAdaptiveBody(chrome: chrome, media: media);
   }
 
   Widget _connecting() {
