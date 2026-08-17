@@ -148,10 +148,15 @@ class ReactionAvPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (av.audioOnlyLiveMedia) {
-      return _audioOnlyStrip();
-    }
-    return layout == ReactionAvLayout.strip ? _strip() : _side();
+    return ListenableBuilder(
+      listenable: av.spectrumListenable,
+      builder: (context, _) {
+        if (av.audioOnlyLiveMedia) {
+          return _audioOnlyStrip();
+        }
+        return layout == ReactionAvLayout.strip ? _strip() : _side();
+      },
+    );
   }
 
   Widget _audioOnlyStrip() {

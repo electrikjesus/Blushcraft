@@ -174,7 +174,9 @@ class WebRtcQrSession extends GameSession {
           return;
         }
         final msg = GameMessage.decode(raw);
-        blushLog('RTC', 'recv type=${msg.type} bytes=${raw.length}');
+        if (msg.type != AvPrivacyMessage.typeName) {
+          blushLog('RTC', 'recv type=${msg.type} bytes=${raw.length}');
+        }
         await onMessage(msg);
       } catch (e) {
         blushLog('RTC', 'message decode error: $e');
@@ -530,7 +532,11 @@ class WebRtcQrSession extends GameSession {
       return;
     }
     final encoded = message.encode();
-    blushLog('RTC', 'send type=${message.type} bytes=${encoded.length}');
+    // av_privacy can be frequent on Local (level sync); logging every send
+    // flooded logcat and hurt the UI isolate during Online storms.
+    if (message.type != AvPrivacyMessage.typeName) {
+      blushLog('RTC', 'send type=${message.type} bytes=${encoded.length}');
+    }
     await ch.send(RTCDataChannelMessage(encoded));
   }
 

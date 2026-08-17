@@ -158,10 +158,12 @@ class LanGameSession extends LocalDiscoverySession {
         if (data is! String) return;
         try {
           final message = GameMessage.decode(data);
-          blushLog(
-            'LAN',
-            'recv type=${message.type} bytes=${data.length}',
-          );
+          if (message.type != AvPrivacyMessage.typeName) {
+            blushLog(
+              'LAN',
+              'recv type=${message.type} bytes=${data.length}',
+            );
+          }
           if (message is HelloMessage) {
             connectedEndpointName = message.name;
             connectedEndpointId = message.playerId;
@@ -353,7 +355,9 @@ class LanGameSession extends LocalDiscoverySession {
       return;
     }
     final encoded = message.encode();
-    blushLog('LAN', 'send type=${message.type} bytes=${encoded.length}');
+    if (message.type != AvPrivacyMessage.typeName) {
+      blushLog('LAN', 'send type=${message.type} bytes=${encoded.length}');
+    }
     socket.add(encoded);
   }
 

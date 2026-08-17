@@ -94,7 +94,7 @@ class _LobbyAvSetupState extends State<LobbyAvSetup> {
       }
       if (wants.camera && hasCam) await _av.setCameraEnabled(true);
       if (wants.mic || (wants.liveView && !hasCam)) {
-        await _av.setMicEnabled(true);
+        await _av.setMicEnabled(true, startCapture: _webrtc == null);
       }
       if (wants.liveView) await _av.setLiveViewEnabled(true);
       await _syncTransport();
@@ -175,7 +175,7 @@ class _LobbyAvSetupState extends State<LobbyAvSetup> {
         await _av.init();
         if (mounted) setState(() => _busy = false);
       }
-      await _av.setMicEnabled(true);
+      await _av.setMicEnabled(true, startCapture: _webrtc == null);
     }
     await _syncTransport();
     await _persistWants();
@@ -191,7 +191,7 @@ class _LobbyAvSetupState extends State<LobbyAvSetup> {
       }
       // Prefer audio when enabling live media; camera stays optional.
       if (!_av.micEnabled) {
-        await _av.setMicEnabled(true);
+        await _av.setMicEnabled(true, startCapture: _webrtc == null);
       }
       // Only auto-enable camera when this device actually has one and mic-only
       // wasn't the point — leave camera off on cameraless tablets.

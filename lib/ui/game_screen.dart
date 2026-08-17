@@ -122,6 +122,10 @@ class _GameScreenState extends State<GameScreen> {
     }) {
       if (!mounted) return;
       final peerLiveBefore = _av.peerLiveViewEnabled;
+      final flagsChanged = cameraEnabled != _av.peerCameraEnabled ||
+          micEnabled != _av.peerMicEnabled ||
+          liveViewEnabled != _av.peerLiveViewEnabled ||
+          hasCamera != _av.peerHasCamera;
       _av.setPeerPrivacy(
         cameraOn: cameraEnabled,
         micOn: micEnabled,
@@ -129,23 +133,23 @@ class _GameScreenState extends State<GameScreen> {
         hasCamera: hasCamera,
         audioLevel: audioLevel,
       );
-      blushLog(
-        'AV',
-        'peer privacy cam=$cameraEnabled mic=$micEnabled '
-        'live=$liveViewEnabled hasCam=$hasCamera lvl=${audioLevel.toStringAsFixed(2)}',
-      );
-      if (!cameraEnabled) {
-        setState(() => _peerFrameBase64 = null);
-      } else {
-        setState(() {});
+      if (flagsChanged) {
+        blushLog(
+          'AV',
+          'peer privacy cam=$cameraEnabled mic=$micEnabled '
+          'live=$liveViewEnabled hasCam=$hasCamera',
+        );
+        if (!cameraEnabled) {
+          setState(() => _peerFrameBase64 = null);
+        } else {
+          setState(() {});
+        }
+        unawaited(_syncLanVideo());
       }
-      unawaited(_syncLanVideo());
-      // Handshake: lobby → game remounts wipe peer flags. When the peer
-      // announces (especially live media), echo ours so both GameScreens sync.
+      // Handshake only when peer live-view newly appears. Never echo level-only
+      // updates — that created an av_privacy storm that starved chat/game sync.
       if (liveViewEnabled && !peerLiveBefore) {
         unawaited(_publishPrivacy());
-      } else {
-        unawaited(_publishPrivacyThrottled());
       }
     };
     widget.controller.onWebrtcVideoSignal = (msg) {
@@ -210,7 +214,8 @@ class _GameScreenState extends State<GameScreen> {
       // Never force camera on cameraless devices.
       if (wants.camera && hasCam) await _av.setCameraEnabled(true);
       if (wants.mic || (wants.liveView && !hasCam)) {
-        await _av.setMicEnabled(true);
+        // Online: WebRTC getUserMedia owns the mic — do not open AudioRecorder.
+        await _av.setMicEnabled(true, startCapture: !_useWebRtcMedia);
       }
       if (wants.liveView) await _av.setLiveViewEnabled(true);
       if (mounted) setState(() {});
@@ -428,7 +433,7 @@ class _GameScreenState extends State<GameScreen> {
     final now = DateTime.now();
     if (_lastLevelPrivacySend != null &&
         now.difference(_lastLevelPrivacySend!) <
-            const Duration(milliseconds: 300)) {
+            const Duration(seconds: 1)) {
       return;
     }
     _lastLevelPrivacySend = now;
@@ -436,7 +441,10 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   void _syncLevelPrivacyTimer() {
-    final need = _av.micEnabled &&
+    // Online: do not flood the data channel with audioLevel — that starved
+    // chat invites and start-game messages (~1 msg/s storms both ways).
+    final need = !_useWebRtcMedia &&
+        _av.micEnabled &&
         _shouldStreamAv(widget.controller.state?.phase) &&
         widget.session?.isConnected == true;
     if (!need) {
@@ -446,7 +454,7 @@ class _GameScreenState extends State<GameScreen> {
     }
     if (_levelPrivacyTimer != null) return;
     _levelPrivacyTimer =
-        Timer.periodic(const Duration(milliseconds: 250), (_) {
+        Timer.periodic(const Duration(seconds: 1), (_) {
       if (!_av.micEnabled) return;
       unawaited(_publishPrivacyThrottled());
     });
@@ -531,7 +539,7 @@ class _GameScreenState extends State<GameScreen> {
     } else {
       final ok = await _confirmAvConsent();
       if (!ok || !mounted) return;
-      await _av.setMicEnabled(true);
+      await _av.setMicEnabled(true, startCapture: !_useWebRtcMedia);
     }
     await _webrtc?.setTrackEnabled(
       video: _av.cameraEnabled,

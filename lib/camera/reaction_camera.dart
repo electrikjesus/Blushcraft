@@ -48,6 +48,14 @@ class ReactionAvController extends ChangeNotifier {
   /// Local mic input level 0–1 (from recorder amplitude).
   double localAudioLevel = 0;
 
+  /// Spectrum / level UI ticks — do **not** rebuild the whole game tree.
+  /// [ReactionAvPanel] listens here; camera/mic flag changes use [notifyListeners].
+  final ChangeNotifier spectrumListenable = ChangeNotifier();
+
+  /// When false, mic is "on" for privacy/WebRTC but we do not open [AudioRecorder]
+  /// (Online owns the mic via getUserMedia).
+  bool localMicCapture = true;
+
   /// Peer's reported mic level 0–1 (from [AvPrivacyMessage.audioLevel]).
   double peerReportedAudioLevel = 0;
 
@@ -68,7 +76,7 @@ class ReactionAvController extends ChangeNotifier {
   StreamSubscription<Amplitude>? _ampSub;
   Timer? _peerReceiveDecay;
   Timer? _spectrumTick;
-  DateTime? _lastLevelNotify;
+  DateTime? _lastPeerLevelAt;
   double _prevLocalLevel = 0;
   double _prevPeerLevel = 0;
 
@@ -120,19 +128,24 @@ class ReactionAvController extends ChangeNotifier {
     bool? hasCamera,
     double? audioLevel,
   }) {
+    var flagsChanged = peerCameraEnabled != cameraOn || peerMicEnabled != micOn;
     peerCameraEnabled = cameraOn;
     peerMicEnabled = micOn;
-    if (liveViewOn != null) {
+    if (liveViewOn != null && peerLiveViewEnabled != liveViewOn) {
       peerLiveViewEnabled = liveViewOn;
+      flagsChanged = true;
     }
-    if (hasCamera != null) {
+    if (hasCamera != null && peerHasCamera != hasCamera) {
       peerHasCamera = hasCamera;
+      flagsChanged = true;
     }
     if (audioLevel != null) {
       peerReportedAudioLevel = audioLevel.clamp(0.0, 1.0);
+      _lastPeerLevelAt = DateTime.now();
       _ensureSpectrumTick();
+      spectrumListenable.notifyListeners();
     }
-    notifyListeners();
+    if (flagsChanged) notifyListeners();
   }
 
   /// Display level for partner chip: reported mic, boosted by receive pulse.
@@ -154,8 +167,8 @@ class ReactionAvController extends ChangeNotifier {
   void _ensureSpectrumTick() {
     if (_spectrumTick != null) return;
     _spectrumTick = Timer.periodic(const Duration(milliseconds: 50), (_) {
-      final localActive = micEnabled && localAudioLevel > 0.02;
-      final peerActive = peerMicEnabled && peerDisplayAudioLevel > 0.02;
+      final localActive = micEnabled && _localSpectrumDriveLevel > 0.02;
+      final peerActive = peerMicEnabled && _peerSpectrumDriveLevel > 0.02;
       if (!localActive && !peerActive) {
         var any = false;
         for (var i = 0; i < spectrumBandCount; i++) {
@@ -171,21 +184,22 @@ class ReactionAvController extends ChangeNotifier {
         }
       }
       if (micEnabled) {
+        final level = _localSpectrumDriveLevel;
         _driveSpectrum(
           localSpectrum,
-          level: localAudioLevel,
+          level: level,
           prevLevel: _prevLocalLevel,
           peak: localPeak,
           onPeak: (p) => localPeak = p,
         );
-        _prevLocalLevel = localAudioLevel;
+        _prevLocalLevel = level;
       } else {
         _decaySpectrum(localSpectrum);
         localPeak *= 0.9;
         localAudioLevel = 0;
       }
       if (peerMicEnabled) {
-        final peerLvl = peerDisplayAudioLevel;
+        final peerLvl = _peerSpectrumDriveLevel;
         _driveSpectrum(
           peerSpectrum,
           level: peerLvl,
@@ -198,8 +212,28 @@ class ReactionAvController extends ChangeNotifier {
         _decaySpectrum(peerSpectrum);
         peerPeak *= 0.9;
       }
-      notifyListeners();
+      spectrumListenable.notifyListeners();
     });
+  }
+
+  /// Soft bounce when mic is on but amplitude is owned by WebRTC (no recorder).
+  double get _localSpectrumDriveLevel {
+    if (!micEnabled) return 0;
+    if (localMicCapture) return localAudioLevel;
+    final t = DateTime.now().millisecondsSinceEpoch / 280.0;
+    return 0.16 + 0.1 * math.sin(t);
+  }
+
+  /// Use peer-reported levels when fresh; otherwise soft ambient (Online).
+  double get _peerSpectrumDriveLevel {
+    if (!peerMicEnabled) return 0;
+    final at = _lastPeerLevelAt;
+    if (at != null &&
+        DateTime.now().difference(at) < const Duration(seconds: 2)) {
+      return peerDisplayAudioLevel;
+    }
+    final t = DateTime.now().millisecondsSinceEpoch / 310.0;
+    return 0.14 + 0.1 * math.sin(t + 1.7);
   }
 
   void _decaySpectrum(List<double> bands) {
@@ -317,14 +351,29 @@ class ReactionAvController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> setMicEnabled(bool enabled) async {
-    if (micEnabled == enabled) return;
+  Future<void> setMicEnabled(
+    bool enabled, {
+    bool startCapture = true,
+  }) async {
+    localMicCapture = startCapture;
+    if (micEnabled == enabled) {
+      if (enabled && startCapture && !micPermissionDenied) {
+        await startMic();
+      } else if (enabled && !startCapture) {
+        await stopMic();
+        _ensureSpectrumTick();
+      }
+      notifyListeners();
+      return;
+    }
     micEnabled = enabled;
     if (enabled) {
       final mic = await Permission.microphone.request();
       micPermissionDenied = !mic.isGranted;
-      if (!micPermissionDenied) {
+      if (!micPermissionDenied && startCapture) {
         await startMic();
+      } else if (!micPermissionDenied && !startCapture) {
+        _ensureSpectrumTick();
       }
     } else {
       await stopMic();
@@ -333,7 +382,7 @@ class ReactionAvController extends ChangeNotifier {
   }
 
   Future<void> startMic() async {
-    if (micPermissionDenied || !micEnabled) return;
+    if (micPermissionDenied || !micEnabled || !localMicCapture) return;
     try {
       if (await _recorder.isRecording()) return;
       final hasPerm = await _recorder.hasPermission();
@@ -430,12 +479,8 @@ class ReactionAvController extends ChangeNotifier {
     final next = ((amp.current + 55) / 45).clamp(0.0, 1.0);
     localAudioLevel = next;
     _ensureSpectrumTick();
-    final now = DateTime.now();
-    if (_lastLevelNotify == null ||
-        now.difference(_lastLevelNotify!) > const Duration(milliseconds: 40)) {
-      _lastLevelNotify = now;
-      notifyListeners();
-    }
+    // Levels only refresh the media strip — never the whole game screen.
+    spectrumListenable.notifyListeners();
   }
 
   void notePeerReceiveActivity(Uint8List bytes) {
@@ -447,6 +492,7 @@ class ReactionAvController extends ChangeNotifier {
     }
     final avg = acc / n / 255.0;
     peerReceiveLevel = (0.2 + avg * 0.8).clamp(0.0, 1.0);
+    _lastPeerLevelAt = DateTime.now();
     _ensureSpectrumTick();
     _peerReceiveDecay?.cancel();
     _peerReceiveDecay = Timer.periodic(const Duration(milliseconds: 80), (t) {
@@ -455,9 +501,9 @@ class ReactionAvController extends ChangeNotifier {
         peerReceiveLevel = 0;
         t.cancel();
       }
-      notifyListeners();
+      spectrumListenable.notifyListeners();
     });
-    notifyListeners();
+    spectrumListenable.notifyListeners();
   }
 
   void _flushAudioOut() {
@@ -627,6 +673,7 @@ class ReactionAvController extends ChangeNotifier {
     final c = _controller;
     _controller = null;
     c?.dispose();
+    spectrumListenable.dispose();
     super.dispose();
   }
 }
